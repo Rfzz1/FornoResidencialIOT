@@ -31,55 +31,15 @@
 
     Blynk.run(); 
 
-    if (millis() - milisEstabilizarHoraLocal >= 1000) {
-        verificarHorarioAlarme();
-    }
-
-    if (millis() - milisEnviarBlynk >= 1000) {
-
-        milisEnviarBlynk = millis();
-
-        enviarDadosJSON();
-        enviarBlynk();
-
-    }
-
-    if (millis() - milisEstabilizarTermopar < 2000) {
-
-      estadoAtual = INICIANDO;
-
-      atualizarLEDs();
-
-      return;
-
-    }
-
-    lerTemperatura();
-
-    if (!temperaturaValida()) {
-
-      estadoAtual = ERRO_SENSOR;
-
-    } else {
-
-      if (estadoAtual == INICIANDO ||
-          estadoAtual == ERRO_SENSOR) {
-
-        estadoAtual = SEGURO;
-
-      }
-
-      definirEstadoSistema();
-
-      definirEstadoForno();
-
-      tratarSessao();
-      alertas();
-
-    }
-
+    atualizarSensores();
+    atualizarEstadoSistema();
+    atualizarEstadoForno();
+    tratarSessao();
+    atualizarAlertas();
+    atualizarHorarioAlarme();
+    atualizarEnvioLogs();
+    atualizarEnvioBlynk();
     atualizarLEDs();
-
     atualizarBuzzer();
 
   }

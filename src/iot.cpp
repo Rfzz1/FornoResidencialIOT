@@ -10,6 +10,10 @@ char ssid[] = "SENAI-TurmaTI_5G";
 char pass[] = "SenaiGaribaldiCeit";
 BlynkTimer timer;
 bool horaSincronizada = false;
+unsigned long ultimoEnvioBlynk = 0;
+unsigned long milisAtualizarHoraLocal = 0;
+unsigned long milisEstabilizarWiFi = 0;
+unsigned long milisAtualizarHorarioAlarme = 0;
 
 void conectarWiFi() {
     WiFi.begin(ssid, pass);
@@ -112,4 +116,18 @@ void verificarHorarioAlarme() {
         } else {
             estadoBuzzer = false;
         }
+}
+
+void atualizarHorarioAlarme() {
+    if (millis() - milisAtualizarHorarioAlarme >= 1000) {
+        milisAtualizarHorarioAlarme = millis();
+        verificarHorarioAlarme();
+    }
+}
+
+void atualizarEnvioBlynk() {
+    if (millis() - ultimoEnvioBlynk >= 1000) {
+        ultimoEnvioBlynk = millis();
+        enviarBlynk();
+    }
 }

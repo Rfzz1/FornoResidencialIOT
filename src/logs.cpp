@@ -3,6 +3,8 @@
 #include "config.h"
 #include "logs.h"
 
+unsigned long milisAtualizarLogs = 0;
+
 // =====================================================
 // CONVERTE ESTADO SISTEMA PARA TEXTO
 // =====================================================
@@ -70,4 +72,11 @@ void enviarDadosJSON() {
     serializeJson(doc, jsonOutput);
 
     Serial.println(jsonOutput);
+}
+
+void atualizarEnvioLogs() {
+    if(millis() - milisAtualizarLogs >= 5000) {
+        milisAtualizarLogs = millis();
+        enviarDadosJSON();
+    }
 }

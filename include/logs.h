@@ -4,5 +4,6 @@
 void enviarDadosJSON();
 String obterEstadoSistemaTexto();
 String obterEstadoFornoTexto();
+void atualizarEnvioLogs();
 
 #endif

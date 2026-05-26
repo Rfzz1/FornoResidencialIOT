@@ -12,6 +12,12 @@ void definirEstadoSistema() {
 
   switch (estadoAtual) {
 
+    case INICIANDO:
+
+      estadoAtual = SEGURO;
+
+      break;
+
     case SEGURO:
 
       if (TEMP_ATUAL >= TEMP_ALERTA_ENTRADA) {
@@ -78,5 +84,49 @@ void definirEstadoForno() {
 
     estadoFornoAtual = FORNO_ATIVO;
 
+  }
+
+  //Registra mudança de estado do forno
+  if (estadoFornoAnterior != estadoFornoAtual) {
+
+    Serial.print("Mudou de ");
+    Serial.print(estadoFornoAnterior);
+
+    Serial.print(" para ");
+
+    Serial.println(estadoFornoAtual);
+
+  }
+}
+
+void atualizarEstadoSistema() {
+  if (millis() - milisEstabilizarTermopar < 2000) {
+
+    estadoAtual = INICIANDO;
+    return;
+
+  } else if (!temperaturaValida()) {
+
+    estadoAtual = ERRO_SENSOR;
+    return;
+
+  } else {
+    definirEstadoSistema();
+  }
+}
+
+void atualizarEstadoForno() {
+  if (millis() - milisEstabilizarTermopar < 2000) {
+
+    estadoFornoAtual = FORNO_DESLIGADO;
+    return;
+
+  } else if (!temperaturaValida()) {
+
+    estadoFornoAtual = FORNO_DESLIGADO;
+    return;
+
+  } else {
+    definirEstadoForno();
   }
 }

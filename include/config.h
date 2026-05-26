@@ -80,6 +80,8 @@ extern float ULTIMA_TEMP;
 extern float tempoLigadoHoras;
 extern float tempoLigadoMinutos;
 
+extern unsigned long ultimaLeituraSensor;
+
 extern unsigned long tempoLigado;
 extern unsigned long tempoLigadoSegundos;
 
@@ -101,6 +103,13 @@ extern unsigned long milisAtualizarHoraLocal;
 
 extern unsigned long tentativaNTP;
 extern unsigned long inicioTentativa;
+
+extern unsigned long ultimoEnvioBlynk;
+extern unsigned long milisAtualizarHorarioAlarme;
+
+extern unsigned long milisAtualizarLogs;
+
+extern unsigned long milisAtualizarAlertas;
 
 extern estadoSistema estadoAtual;
 

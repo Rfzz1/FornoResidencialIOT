@@ -12,19 +12,26 @@ unsigned long milisLerTemp = 0;
 
 void lerTemperatura() {
 
-  if ((millis() - milisLerTemp) >= 1000) {
-
-    milisLerTemp = millis();
-
     ULTIMA_TEMP = TEMP_ATUAL;
 
     TEMP_ATUAL = TERMOPAR.readCelsius();
 
-    Serial.print("Temperatura Atual: ");
-    Serial.print(TEMP_ATUAL);
-    Serial.println(" °C");
+    Serial.printf(
+        "Temperatura: %.2f °C\n",
+        TEMP_ATUAL
+    );
+}
+
+void atualizarSensores() {
+
+  if (millis() - ultimaLeituraSensor >= 1000) {
+
+    ultimaLeituraSensor = millis();
+
+    lerTemperatura();
 
   }
+
 }
 
 bool temperaturaValida() {
