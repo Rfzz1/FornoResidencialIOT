@@ -3,6 +3,7 @@
 #include "sessao.h"
 
 float tempoLigadoHoras = 0;
+float tempoLigadoMinutos = 0;
 
 unsigned long tempoLigado = 0;
 unsigned long tempoLigadoSegundos = 0;

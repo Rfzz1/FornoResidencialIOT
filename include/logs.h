@@ -2,5 +2,7 @@
 #define LOGS_H
 
 void enviarDadosJSON();
+String obterEstadoSistemaTexto();
+String obterEstadoFornoTexto();
 
 #endif

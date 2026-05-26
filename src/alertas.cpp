@@ -5,6 +5,7 @@
 void alertas() {
 
   tempoLigadoHoras = tempoLigadoSegundos / 3600.0;
+  tempoLigadoMinutos = (tempoLigadoSegundos % 3600) / 60.0;
 
   if (tempoLigadoHoras >= 1.5 &&
       TEMP_ATUAL >= 200) {

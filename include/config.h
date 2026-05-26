@@ -23,13 +23,13 @@
 #include <math.h>
 #include <MAX6675.h>
 #include <WiFi.h>
-#include <BlynkSimpleEsp32.h>  
+#include <BlynkSimpleEsp32.h> 
+
 // =====================================================
 // SENSOR
 // =====================================================
 
 extern MAX6675 TERMOPAR;
-
 // =====================================================
 // CONSTANTES
 // =====================================================
@@ -43,6 +43,10 @@ const float TEMP_ALERTA_SAIDA = 190;
 const float TEMP_MAXIMA_VALIDA = 400;
 
 const float MARGEM_ESTABILIDADE = 2.0;
+
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = -10800; //CARLOS BARBOSA - GMT-3
+const int   daylightOffset_sec = 0;
 
 // =====================================================
 // ENUMS
@@ -69,10 +73,12 @@ enum estadoForno {
 
 extern bool estadoPisca;
 extern bool estadoBuzzer;
+extern bool horaSincronizada;
 
 extern float TEMP_ATUAL;
 extern float ULTIMA_TEMP;
 extern float tempoLigadoHoras;
+extern float tempoLigadoMinutos;
 
 extern unsigned long tempoLigado;
 extern unsigned long tempoLigadoSegundos;
@@ -87,7 +93,14 @@ extern unsigned long milisPiscarLedInicializacao;
 
 extern unsigned long milisBuzzerErro;
 extern unsigned long milisBuzzerAlerta;
-unsigned long milisEnviarBlynk = 0;
+extern unsigned long milisEnviarBlynk;
+
+extern unsigned long milisEstabilizarWiFi;
+extern unsigned long milisEstabilizarHoraLocal;
+extern unsigned long milisAtualizarHoraLocal;
+
+extern unsigned long tentativaNTP;
+extern unsigned long inicioTentativa;
 
 extern estadoSistema estadoAtual;
 
@@ -96,5 +109,21 @@ extern estadoForno estadoFornoAnterior;
 
 extern char ssid[];
 extern char pass[];
+
+extern BlynkTimer timer;
+
+extern int HoraInicio;
+extern int MinutoInicio;
+
+extern int HoraFim;
+extern int MinutoFim;
+
+extern int HorarioInicio;
+extern int HorarioFim;
+
+extern int TempoAlarme;
+extern int HoraAtual;
+extern int MinutoAtual;
+extern int SegundoAtual;
 
 #endif

@@ -69,5 +69,5 @@ void enviarDadosJSON() {
     Serial.println("JSON Gerado: ");
     serializeJson(doc, jsonOutput);
 
-    Serial.println();
+    Serial.println(jsonOutput);
 }
