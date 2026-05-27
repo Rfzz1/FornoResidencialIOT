@@ -8,8 +8,7 @@
   #include "alertas.h"
   #include "logs.h"
   #include "iot.h"
-
-  unsigned long milisEnviarBlynk = 0;
+  #include "telemetria.h"
 
   void setup() {
 
@@ -23,7 +22,7 @@
 
     pinMode(BUZZER, OUTPUT);
 
-    milisEstabilizarTermopar = millis();
+    dados.milisEstabilizarTermopar = millis();
 
   }
 

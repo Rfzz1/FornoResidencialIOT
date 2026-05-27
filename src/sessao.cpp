@@ -1,19 +1,15 @@
 #include <Arduino.h>
 #include "config.h"
 #include "sessao.h"
+#include "telemetria.h"
 
-float tempoLigadoHoras = 0;
-float tempoLigadoMinutos = 0;
-
-unsigned long tempoLigado = 0;
-unsigned long tempoLigadoSegundos = 0;
-
-unsigned long milisInicioSessao = 0;
+static unsigned long milisInicioSessao = 0;
+static unsigned long tempoLigado = 0;
 
 void tratarSessao() {
 
-  if (estadoFornoAtual != FORNO_DESLIGADO &&
-      estadoFornoAnterior == FORNO_DESLIGADO) {
+  if (dados.estadoFornoAtual != FORNO_DESLIGADO &&
+      dados.estadoFornoAnterior == FORNO_DESLIGADO) {
 
     milisInicioSessao = millis();
 
@@ -21,29 +17,29 @@ void tratarSessao() {
 
   }
 
-  if (estadoFornoAtual != FORNO_DESLIGADO) {
+  if (dados.estadoFornoAtual != FORNO_DESLIGADO) {
 
     tempoLigado = millis() - milisInicioSessao;
 
-    tempoLigadoSegundos = tempoLigado / 1000;
+    dados.tempoLigadoSegundos = tempoLigado / 1000;
 
     Serial.print("Tempo ligado: ");
-    Serial.print(tempoLigadoSegundos);
+    Serial.print(dados.tempoLigadoSegundos);
     Serial.println(" segundos");
 
   }
 
-  if (estadoFornoAnterior != FORNO_DESLIGADO &&
-      estadoFornoAtual == FORNO_DESLIGADO) {
+  if (dados.estadoFornoAnterior != FORNO_DESLIGADO &&
+      dados.estadoFornoAtual == FORNO_DESLIGADO) {
 
     Serial.println("Sessao encerrada!");
 
     Serial.print("Tempo total ligado: ");
-    Serial.print(tempoLigado / 1000);
+    Serial.print(dados.tempoLigadoSegundos);
     Serial.println(" segundos");
 
     tempoLigado = 0;
-    tempoLigadoSegundos = 0;
+    dados.tempoLigadoSegundos = 0;
 
   }
 }

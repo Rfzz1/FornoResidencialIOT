@@ -2,8 +2,9 @@
 #include <ArduinoJson.h>
 #include "config.h"
 #include "logs.h"
+#include "telemetria.h"
 
-unsigned long milisAtualizarLogs = 0;
+static unsigned long milisAtualizarLogs = 0;
 
 // =====================================================
 // CONVERTE ESTADO SISTEMA PARA TEXTO
@@ -11,7 +12,7 @@ unsigned long milisAtualizarLogs = 0;
 
 String obterEstadoSistemaTexto() {
 
-    switch (estadoAtual) {
+    switch (dados.estadoAtual) {
 
         case INICIANDO:
             return "INICIANDO";
@@ -39,7 +40,7 @@ String obterEstadoSistemaTexto() {
 
 String obterEstadoFornoTexto() {
 
-    switch (estadoFornoAtual) {
+    switch (dados.estadoFornoAtual) {
 
         case FORNO_DESLIGADO:
             return "DESLIGADO";
@@ -61,11 +62,11 @@ String obterEstadoFornoTexto() {
 void enviarDadosJSON() {
     JsonDocument doc;
 
-    doc["temperatura"]["atual"] = TEMP_ATUAL;
-    doc["temperatura"]["ultima"] = ULTIMA_TEMP;
+    doc["temperatura"]["atual"] = dados.TEMP_ATUAL;
+    doc["temperatura"]["ultima"] = dados.ULTIMA_TEMP;
     doc["estado_sistema"] = obterEstadoSistemaTexto();
     doc["estado_forno"] = obterEstadoFornoTexto();
-    doc["tempo_ligado"] = tempoLigadoHoras;
+    doc["tempo_ligado"] = dados.tempoLigadoHoras;
 
     String jsonOutput;
     Serial.println("JSON Gerado: ");

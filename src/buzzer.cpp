@@ -1,11 +1,10 @@
 #include <Arduino.h>
 #include "config.h"
 #include "buzzer.h"
+#include "telemetria.h"
 
-bool estadoBuzzer = false;
-
-unsigned long milisBuzzerErro = 0;
-unsigned long milisBuzzerAlerta = 0;
+static unsigned long milisBuzzerErro = 0;
+static unsigned long milisBuzzerAlerta = 0;
 
 void desligarBuzzer() {
 
@@ -19,9 +18,9 @@ void buzzerErroSensor() {
 
     milisBuzzerErro = millis();
 
-    estadoBuzzer = !estadoBuzzer;
+    dados.estadoBuzzer = !dados.estadoBuzzer;
 
-    digitalWrite(BUZZER, estadoBuzzer);
+    digitalWrite(BUZZER, dados.estadoBuzzer);
 
   }
 }
@@ -32,9 +31,9 @@ void buzzerAlerta() {
 
     milisBuzzerAlerta = millis();
 
-    estadoBuzzer = !estadoBuzzer;
+    dados.estadoBuzzer = !dados.estadoBuzzer;
 
-    digitalWrite(BUZZER, estadoBuzzer);
+    digitalWrite(BUZZER, dados.estadoBuzzer);
 
   }
 }
@@ -47,7 +46,7 @@ void buzzerCritico() {
 
 void atualizarBuzzer() {
 
-  switch (estadoAtual) {
+  switch (dados.estadoAtual) {
 
     case CRITICO:
 

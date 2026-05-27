@@ -5,15 +5,16 @@
 #include "config.h"
 #include "logs.h"
 #include <time.h>
+#include "telemetria.h"
 
 char ssid[] = "SENAI-TurmaTI_5G";
 char pass[] = "SenaiGaribaldiCeit";
-BlynkTimer timer;
-bool horaSincronizada = false;
-unsigned long ultimoEnvioBlynk = 0;
-unsigned long milisAtualizarHoraLocal = 0;
-unsigned long milisEstabilizarWiFi = 0;
-unsigned long milisAtualizarHorarioAlarme = 0;
+static unsigned long milisAtualizarHoraLocal = 0;
+static unsigned long milisAtualizarHorarioAlarme = 0;
+static unsigned long ultimoEnvioBlynk = 0;
+static unsigned long milisEstabilizarWiFi = 0;
+static unsigned long tentativaNTP = 0;
+static unsigned long inicioTentativa = 0;
 
 void conectarWiFi() {
     WiFi.begin(ssid, pass);
@@ -41,7 +42,7 @@ void estabilizarHoraLocal() {
 
     struct tm timeinfo;
 
-    if (horaSincronizada) {
+    if (dados.horaSincronizada) {
         return;
     }
 
@@ -51,7 +52,7 @@ void estabilizarHoraLocal() {
     
         if (getLocalTime(&timeinfo)) {
 
-            horaSincronizada = true;
+            dados.horaSincronizada = true;
             Serial.println("Hora local sincronizada.");
 
         } else {
@@ -59,7 +60,7 @@ void estabilizarHoraLocal() {
             Serial.println("Obtendo hora local...");
         }
     }
-    if (millis() - inicioTentativa >= 10000 && !horaSincronizada) {
+    if (millis() - inicioTentativa >= 10000 && !dados.horaSincronizada) {
 
         Serial.println("Falha ao sincronizar NTP.");
     }
@@ -71,24 +72,24 @@ void printLocalTime() {
     if (getLocalTime(&infoHoraLocal) && millis() - milisAtualizarHoraLocal >= 1000) {
         milisAtualizarHoraLocal = millis();
 
-        HoraAtual = infoHoraLocal.tm_hour;
-        MinutoAtual = infoHoraLocal.tm_min;
-        SegundoAtual = infoHoraLocal.tm_sec;
+        dados.HoraAtual = infoHoraLocal.tm_hour;
+        dados.MinutoAtual = infoHoraLocal.tm_min;
+        dados.SegundoAtual = infoHoraLocal.tm_sec;
 
         Serial.printf(
             "%02d:%02d:%02d\n",
-            HoraAtual,
-            MinutoAtual,
-            SegundoAtual
+            dados.HoraAtual,
+            dados.MinutoAtual,
+            dados.SegundoAtual
         );
     }
 }
 
 void enviarBlynk() {
-    Blynk.virtualWrite(V0, TEMP_ATUAL);
+    Blynk.virtualWrite(V0, dados.TEMP_ATUAL);
     Blynk.virtualWrite(V1, obterEstadoFornoTexto());
     Blynk.virtualWrite(V2, obterEstadoSistemaTexto());
-    Blynk.virtualWrite(V3, tempoLigadoMinutos);
+    Blynk.virtualWrite(V3, dados.tempoLigadoMinutos);
 }
 
 
@@ -96,25 +97,25 @@ BLYNK_WRITE(V5) {
     TimeInputParam t(param);
 
     if (t.hasStartTime()) {
-        HoraInicio = t.getStartHour();
-        MinutoInicio = t.getStartMinute();
-        HoraFim = t.getStopHour();
-        MinutoFim = t.getStopMinute();
-        HorarioInicio = HoraInicio * 60 + MinutoInicio;
-        HorarioFim = HoraFim * 60 + MinutoFim;
+        dados.HoraInicio = t.getStartHour();
+        dados.MinutoInicio = t.getStartMinute();
+        dados.HoraFim = t.getStopHour();
+        dados.MinutoFim = t.getStopMinute();
+        dados.HorarioInicio = dados.HoraInicio * 60 + dados.MinutoInicio;
+        dados.HorarioFim = dados.HoraFim * 60 + dados.MinutoFim;
 
-        TempoAlarme = HorarioFim - HorarioInicio;
-        if (TempoAlarme < 0) {
-            TempoAlarme += 24 * 60;
+        dados.TempoAlarme = dados.HorarioFim - dados.HorarioInicio;
+        if (dados.TempoAlarme < 0) {
+            dados.TempoAlarme += 24 * 60;
         }
     }
 }
 
 void verificarHorarioAlarme() {
-    if (HoraAtual == HoraFim && MinutoAtual == MinutoFim) {
-            estadoBuzzer = true;
+    if (dados.HoraAtual == dados.HoraFim && dados.MinutoAtual == dados.MinutoFim) {
+            dados.estadoBuzzer = true;
         } else {
-            estadoBuzzer = false;
+            dados.estadoBuzzer = false;
         }
 }
 

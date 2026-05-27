@@ -2,27 +2,23 @@
 #include "config.h"
 #include "sensores.h"
 #include "estados.h"
-
-estadoSistema estadoAtual = INICIANDO;
-
-estadoForno estadoFornoAtual = FORNO_DESLIGADO;
-estadoForno estadoFornoAnterior = FORNO_DESLIGADO;
+#include "telemetria.h"
 
 void definirEstadoSistema() {
 
-  switch (estadoAtual) {
+  switch (dados.estadoAtual) {
 
     case INICIANDO:
 
-      estadoAtual = SEGURO;
+      dados.estadoAtual = SEGURO;
 
       break;
 
     case SEGURO:
 
-      if (TEMP_ATUAL >= TEMP_ALERTA_ENTRADA) {
+      if (dados.TEMP_ATUAL >= TEMP_ALERTA_ENTRADA) {
 
-        estadoAtual = ALERTA;
+        dados.estadoAtual = ALERTA;
 
       }
 
@@ -30,13 +26,13 @@ void definirEstadoSistema() {
 
     case ALERTA:
 
-      if (TEMP_ATUAL >= TEMP_CRITICA_ENTRADA) {
+      if (dados.TEMP_ATUAL >= TEMP_CRITICA_ENTRADA) {
 
-        estadoAtual = CRITICO;
+        dados.estadoAtual = CRITICO;
 
-      } else if (TEMP_ATUAL < TEMP_ALERTA_SAIDA) {
+      } else if (dados.TEMP_ATUAL < TEMP_ALERTA_SAIDA) {
 
-        estadoAtual = SEGURO;
+        dados.estadoAtual = SEGURO;
 
       }
 
@@ -44,9 +40,9 @@ void definirEstadoSistema() {
 
     case CRITICO:
 
-      if (TEMP_ATUAL < TEMP_CRITICA_SAIDA) {
+      if (dados.TEMP_ATUAL < TEMP_CRITICA_SAIDA) {
 
-        estadoAtual = ALERTA;
+        dados.estadoAtual = ALERTA;
 
       }
 
@@ -56,7 +52,7 @@ void definirEstadoSistema() {
 
       if (temperaturaValida()) {
 
-        estadoAtual = SEGURO;
+        dados.estadoAtual = SEGURO;
 
       }
 
@@ -66,48 +62,48 @@ void definirEstadoSistema() {
 
 void definirEstadoForno() {
 
-  estadoFornoAnterior = estadoFornoAtual;
+  dados.estadoFornoAnterior = dados.estadoFornoAtual;
 
-  if (TEMP_ATUAL < 40) {
+  if (dados.TEMP_ATUAL < 40) {
 
-    estadoFornoAtual = FORNO_DESLIGADO;
+    dados.estadoFornoAtual = FORNO_DESLIGADO;
 
-  } else if (TEMP_ATUAL > ULTIMA_TEMP + MARGEM_ESTABILIDADE) {
+  } else if (dados.TEMP_ATUAL > dados.ULTIMA_TEMP + MARGEM_ESTABILIDADE) {
 
-    estadoFornoAtual = FORNO_AQUECENDO;
+    dados.estadoFornoAtual = FORNO_AQUECENDO;
 
-  } else if (TEMP_ATUAL < ULTIMA_TEMP - MARGEM_ESTABILIDADE) {
+  } else if (dados.TEMP_ATUAL < dados.ULTIMA_TEMP - MARGEM_ESTABILIDADE) {
 
-    estadoFornoAtual = FORNO_ESFRIANDO;
+    dados.estadoFornoAtual = FORNO_ESFRIANDO;
 
   } else {
 
-    estadoFornoAtual = FORNO_ATIVO;
+    dados.estadoFornoAtual = FORNO_ATIVO;
 
   }
 
   //Registra mudança de estado do forno
-  if (estadoFornoAnterior != estadoFornoAtual) {
+  if (dados.estadoFornoAnterior != dados.estadoFornoAtual) {
 
     Serial.print("Mudou de ");
-    Serial.print(estadoFornoAnterior);
+    Serial.print(dados.estadoFornoAnterior);
 
     Serial.print(" para ");
 
-    Serial.println(estadoFornoAtual);
+    Serial.println(dados.estadoFornoAtual);
 
   }
 }
 
 void atualizarEstadoSistema() {
-  if (millis() - milisEstabilizarTermopar < 2000) {
+  if (millis() - dados.milisEstabilizarTermopar < 2000) {
 
-    estadoAtual = INICIANDO;
+    dados.estadoAtual = INICIANDO;
     return;
 
   } else if (!temperaturaValida()) {
 
-    estadoAtual = ERRO_SENSOR;
+    dados.estadoAtual = ERRO_SENSOR;
     return;
 
   } else {
@@ -116,14 +112,14 @@ void atualizarEstadoSistema() {
 }
 
 void atualizarEstadoForno() {
-  if (millis() - milisEstabilizarTermopar < 2000) {
+  if (millis() - dados.milisEstabilizarTermopar < 2000) {
 
-    estadoFornoAtual = FORNO_DESLIGADO;
+    dados.estadoFornoAtual = FORNO_DESLIGADO;
     return;
 
   } else if (!temperaturaValida()) {
 
-    estadoFornoAtual = FORNO_DESLIGADO;
+    dados.estadoFornoAtual = FORNO_DESLIGADO;
     return;
 
   } else {

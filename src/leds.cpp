@@ -1,11 +1,10 @@
 #include <Arduino.h>
 #include "config.h"
 #include "leds.h"
+#include "telemetria.h"
 
-bool estadoPisca = false;
-
-unsigned long milisPiscarLedErro = 0;
-unsigned long milisPiscarLedInicializacao = 0;
+static unsigned long milisPiscarLedErro = 0;
+static unsigned long milisPiscarLedInicializacao = 0;
 
 void desligarLEDs() {
 
@@ -21,11 +20,11 @@ void piscarLedErro() {
 
     milisPiscarLedErro = millis();
 
-    estadoPisca = !estadoPisca;
+    dados.estadoPisca = !dados.estadoPisca;
 
     desligarLEDs();
 
-    digitalWrite(RED, estadoPisca);
+    digitalWrite(RED, dados.estadoPisca);
 
   }
 }
@@ -36,19 +35,19 @@ void piscarLedInicializacao() {
 
     milisPiscarLedInicializacao = millis();
 
-    estadoPisca = !estadoPisca;
+    dados.estadoPisca = !dados.estadoPisca;
 
     desligarLEDs();
 
-    digitalWrite(RED, estadoPisca);
-    digitalWrite(GREEN, estadoPisca);
+    digitalWrite(RED, dados.estadoPisca);
+    digitalWrite(GREEN, dados.estadoPisca);
 
   }
 }
 
 void atualizarLEDs() {
 
-  switch (estadoAtual) {
+  switch (dados.estadoAtual) {
 
     case INICIANDO:
 
