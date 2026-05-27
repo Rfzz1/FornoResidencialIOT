@@ -4,6 +4,8 @@
 #include "estados.h"
 #include "telemetria.h"
 
+static unsigned long milisDuracaoEstado = 0;
+
 void definirEstadoSistema() {
 
   switch (dados.estadoAtual) {
@@ -81,21 +83,12 @@ void definirEstadoForno() {
     dados.estadoFornoAtual = FORNO_ATIVO;
 
   }
-
-  //Registra mudança de estado do forno
-  if (dados.estadoFornoAnterior != dados.estadoFornoAtual) {
-
-    Serial.print("Mudou de ");
-    Serial.print(dados.estadoFornoAnterior);
-
-    Serial.print(" para ");
-
-    Serial.println(dados.estadoFornoAtual);
-
-  }
 }
 
 void atualizarEstadoSistema() {
+
+  dados.estadoAnterior = dados.estadoAtual;
+
   if (millis() - dados.milisEstabilizarTermopar < 2000) {
 
     dados.estadoAtual = INICIANDO;

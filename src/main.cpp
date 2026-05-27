@@ -9,6 +9,7 @@
   #include "logs.h"
   #include "iot.h"
   #include "telemetria.h"
+  #include "eventos.h"
 
   void setup() {
 
@@ -33,6 +34,7 @@
     atualizarSensores();
     atualizarEstadoSistema();
     atualizarEstadoForno();
+    processarEventos();
     tratarSessao();
     atualizarAlertas();
     atualizarHorarioAlarme();

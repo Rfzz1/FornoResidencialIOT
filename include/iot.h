@@ -9,6 +9,7 @@ void estabilizarHoraLocal();
 void verificarHorarioAlarme();
 void atualizarEnvioBlynk();
 void atualizarHorarioAlarme();
+String obterHorarioFormatado();
 BLYNK_WRITE(V5);
 
 #endif

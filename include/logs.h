@@ -5,5 +5,6 @@ void enviarDadosJSON();
 String obterEstadoSistemaTexto();
 String obterEstadoFornoTexto();
 void atualizarEnvioLogs();
+void salvarLogCritico();
 
 #endif

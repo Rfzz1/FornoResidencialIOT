@@ -85,6 +85,21 @@ void printLocalTime() {
     }
 }
 
+String obterHorarioFormatado() {
+
+    char buffer[20];
+
+    sprintf(
+        buffer,
+        "%02d:%02d:%02d",
+        dados.HoraAtual,
+        dados.MinutoAtual,
+        dados.SegundoAtual
+    );
+
+    return String(buffer);
+}
+
 void enviarBlynk() {
     Blynk.virtualWrite(V0, dados.TEMP_ATUAL);
     Blynk.virtualWrite(V1, obterEstadoFornoTexto());

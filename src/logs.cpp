@@ -3,6 +3,7 @@
 #include "config.h"
 #include "logs.h"
 #include "telemetria.h"
+#include "iot.h"
 
 static unsigned long milisAtualizarLogs = 0;
 
@@ -67,6 +68,7 @@ void enviarDadosJSON() {
     doc["estado_sistema"] = obterEstadoSistemaTexto();
     doc["estado_forno"] = obterEstadoFornoTexto();
     doc["tempo_ligado"] = dados.tempoLigadoHoras;
+    doc["horario_atual"] = obterHorarioFormatado();
 
     String jsonOutput;
     Serial.println("JSON Gerado: ");
@@ -80,4 +82,18 @@ void atualizarEnvioLogs() {
         milisAtualizarLogs = millis();
         enviarDadosJSON();
     }
+}
+
+void salvarLogCritico() {
+    JsonDocument criticoDoc;
+    Serial.println("LOG CRÍTICO: O sistema entrou em estado CRÍTICO. Verificar imediatamente!");
+    criticoDoc["temperatura"]["atual"] = dados.TEMP_ATUAL;
+    criticoDoc["estado_sistema"] = obterEstadoSistemaTexto();
+    criticoDoc["horario_atual"] = obterHorarioFormatado();
+    printLocalTime();
+
+    String jsonCritico;
+    serializeJson(criticoDoc, jsonCritico);
+    Serial.println("Detalhes do Log Crítico:");
+    Serial.println(jsonCritico);
 }

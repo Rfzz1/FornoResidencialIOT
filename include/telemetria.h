@@ -18,6 +18,7 @@
         unsigned long tempoLigadoSegundos = 0;
 
         estadoSistema estadoAtual = INICIANDO;
+        estadoSistema estadoAnterior = INICIANDO;
 
         estadoForno estadoFornoAtual = FORNO_DESLIGADO;
         estadoForno estadoFornoAnterior = FORNO_DESLIGADO;
