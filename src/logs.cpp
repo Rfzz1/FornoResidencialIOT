@@ -65,7 +65,7 @@ void enviarDadosJSON() {
 
     doc["temperatura"]["atual"] = dados.TEMP_ATUAL;
     doc["temperatura"]["ultima"] = dados.ULTIMA_TEMP;
-    doc["estado_sistema"] = obterEstadoSistemaTexto();
+    doc["estado_sistema"] = obterEstadoSistemaTexto(dados.estadoAtual);
     doc["estado_forno"] = obterEstadoFornoTexto();
     doc["tempo_ligado"] = dados.tempoLigadoHoras;
     doc["horario_atual"] = obterHorarioFormatado();
@@ -81,19 +81,22 @@ void atualizarEnvioLogs() {
     if(millis() - milisAtualizarLogs >= 5000) {
         milisAtualizarLogs = millis();
         enviarDadosJSON();
+        salvarLogEstado();
     }
 }
 
 void salvarLogEstado() {
     JsonDocument estadoDoc;
-    Serial.printf("LOG: O sistema entrou em estado %d. Verificar imediatamente!", dados.estadoAnterior);
-    estadoDoc["temperatura"]["atual"] = dados.TEMP_ATUAL;
-    estadoDoc["estado_sistema"] = obterEstadoSistemaTexto();
-    estadoDoc["horario_atual"] = obterHorarioFormatado();
-    printLocalTime();
 
-    String jsonEstado;
-    serializeJson(estadoDoc, jsonEstado);
-    Serial.printf("Detalhes do Log %d:", dados.estadoAnterior);
-    Serial.println(jsonEstado);
+    if(dados.estadoAnterior != dados.estadoAtual) {
+        Serial.printf("LOG: O sistema entrou em estado %s. Verificar imediatamente!", obterEstadoSistemaTexto(dados.estadoAtual).c_str());
+        estadoDoc["temperatura"]["atual"] = dados.TEMP_ATUAL;
+        estadoDoc["estado_sistema"] = obterEstadoSistemaTexto(dados.estadoAtual);
+        estadoDoc["horario_atual"] = obterHorarioFormatado();
+
+        String jsonEstado;
+        serializeJson(estadoDoc, jsonEstado);
+        Serial.printf("Detalhes do Log %s:", obterEstadoSistemaTexto(dados.estadoAtual).c_str());
+        Serial.println(jsonEstado);
+    }
 }

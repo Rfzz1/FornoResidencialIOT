@@ -14,7 +14,6 @@ static unsigned long milisAtualizarHorarioAlarme = 0;
 static unsigned long ultimoEnvioBlynk = 0;
 static unsigned long milisEstabilizarWiFi = 0;
 static unsigned long tentativaNTP = 0;
-static unsigned long inicioTentativa = 0;
 
 void conectarWiFi() {
     WiFi.begin(ssid, pass);
@@ -22,7 +21,7 @@ void conectarWiFi() {
     while (WiFi.status() != WL_CONNECTED) {
         if (millis() - milisEstabilizarWiFi >= 1000) {
             milisEstabilizarWiFi = millis();
-            Serial.println(".");
+            Serial.print(".");
         }
     }
     Serial.println("\nWiFi conectado.");
@@ -31,14 +30,27 @@ void conectarWiFi() {
     printLocalTime();
 }
 
+void conectarBlynk() {
+    if (WiFi.status() == WL_CONNECTED) {
+
+        if (!Blynk.connected()) {
+
+            Blynk.connect(1000);
+
+        }
+
+        Blynk.run();
+    } else {
+        Serial.println("WiFi desconectado. Tentando reconectar...");
+        conectarWiFi();
+    }
+}
+
 void configurarNTP() {
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 }
 
 void estabilizarHoraLocal() {
-
-    tentativaNTP = 0;
-    inicioTentativa = millis();
 
     struct tm timeinfo;
 
@@ -60,8 +72,9 @@ void estabilizarHoraLocal() {
             Serial.println("Obtendo hora local...");
         }
     }
-    if (millis() - inicioTentativa >= 10000 && !dados.horaSincronizada) {
+    if (millis() - dados.inicioTentativa >= 10000 && !dados.horaSincronizada && !dados.timeoutNTP) {
 
+        dados.timeoutNTP = true;
         Serial.println("Falha ao sincronizar NTP.");
     }
 }
@@ -103,7 +116,7 @@ String obterHorarioFormatado() {
 void enviarBlynk() {
     Blynk.virtualWrite(V0, dados.TEMP_ATUAL);
     Blynk.virtualWrite(V1, obterEstadoFornoTexto());
-    Blynk.virtualWrite(V2, obterEstadoSistemaTexto());
+    Blynk.virtualWrite(V2, obterEstadoSistemaTexto(dados.estadoAtual));
     Blynk.virtualWrite(V3, dados.tempoLigadoMinutos);
 }
 
@@ -128,9 +141,9 @@ BLYNK_WRITE(V5) {
 
 void verificarHorarioAlarme() {
     if (dados.HoraAtual == dados.HoraFim && dados.MinutoAtual == dados.MinutoFim) {
-            dados.estadoBuzzer = true;
+            dados.buzzerAtivaHorario = true;
         } else {
-            dados.estadoBuzzer = false;
+            dados.buzzerAtivaHorario = false;
         }
 }
 

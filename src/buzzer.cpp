@@ -5,10 +5,25 @@
 
 static unsigned long milisBuzzerErro = 0;
 static unsigned long milisBuzzerAlerta = 0;
+static unsigned long milisBuzzerHorario = 0;
 
 void desligarBuzzer() {
 
   digitalWrite(BUZZER, LOW);
+
+}
+
+void buzzerHorarioAlarme() {
+
+  if (millis() - milisBuzzerHorario >= 1000) {
+
+    milisBuzzerHorario = millis();
+
+    dados.buzzerAtivaHorario = !dados.buzzerAtivaHorario;
+
+    digitalWrite(BUZZER, dados.buzzerAtivaHorario);
+
+  }
 
 }
 
@@ -18,9 +33,9 @@ void buzzerErroSensor() {
 
     milisBuzzerErro = millis();
 
-    dados.estadoBuzzer = !dados.estadoBuzzer;
+    dados.estadoBuzzerPisca = !dados.estadoBuzzerPisca;
 
-    digitalWrite(BUZZER, dados.estadoBuzzer);
+    digitalWrite(BUZZER, dados.estadoBuzzerPisca);
 
   }
 }
@@ -31,9 +46,9 @@ void buzzerAlerta() {
 
     milisBuzzerAlerta = millis();
 
-    dados.estadoBuzzer = !dados.estadoBuzzer;
+    dados.estadoBuzzerPisca = !dados.estadoBuzzerPisca;
 
-    digitalWrite(BUZZER, dados.estadoBuzzer);
+    digitalWrite(BUZZER, dados.estadoBuzzerPisca);
 
   }
 }

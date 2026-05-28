@@ -5,53 +5,128 @@
 #include "eventos.h"
 #include "logs.h"
 
+eventoSistema filaEventos[TAMANHO_FILA_EVENTOS];
+int inicioFila = 0;
+int fimFila = 0;
+
+void adicionarEvento(eventoSistema evento) {
+
+    int proximo =
+        (fimFila + 1) % TAMANHO_FILA_EVENTOS;
+
+    if (proximo == inicioFila) {
+
+        Serial.println(
+            "ERRO: fila cheia"
+        );
+
+        return;
+    }
+
+    filaEventos[fimFila] = evento;
+
+    fimFila = proximo;
+}
+
+void processarFilaEventos() {
+    while (inicioFila != fimFila) {
+        eventoSistema evento = filaEventos[inicioFila];
+        inicioFila = (inicioFila + 1) % TAMANHO_FILA_EVENTOS;
+
+        tratarEvento(evento);
+    }
+}
+
+void tratarEvento(eventoSistema evento) {
+    switch (evento) {
+        case ALERTA_ENTRADA:
+
+            iniciarSessaoEstado(
+                dados.sessaoAlerta
+            );
+
+            salvarLogEstado();
+
+            Serial.println("Entrou em ALERTA");
+
+            break;
+        case ALERTA_SAIDA:
+
+            finalizarSessaoEstado(
+                dados.sessaoAlerta
+            );
+
+            exibirDuracaoEstado(
+                ALERTA,
+                dados.sessaoAlerta
+            );
+
+            break;
+        case CRITICO_ENTRADA:
+            
+            iniciarSessaoEstado(
+                dados.sessaoCritico
+            );
+            salvarLogEstado();
+            Serial.println("Entrou em CRÍTICO");
+            break;
+        case CRITICO_SAIDA:
+            finalizarSessaoEstado(
+                dados.sessaoCritico
+            );
+            exibirDuracaoEstado(
+                CRITICO,
+                dados.sessaoCritico
+            );
+            break;
+        case ERRO_SENSOR_ENTRADA:
+            iniciarSessaoEstado(
+                dados.sessaoErroSensor
+            );
+            Serial.println("Evento: Entrada no estado de Erro de Sensor");
+            break;
+        case ERRO_SENSOR_SAIDA:
+            finalizarSessaoEstado(
+                dados.sessaoErroSensor
+            );
+            exibirDuracaoEstado(
+                ERRO_SENSOR,
+                dados.sessaoErroSensor
+            );
+            Serial.println("Evento: Saída do estado de Erro de Sensor");
+            break;
+        default:
+            break;
+    }
+}
+
 void processarEventos() {
 
     if (entrouEstado(ALERTA)) {
+        adicionarEvento(ALERTA_ENTRADA);
+    }
 
-        Serial.println("Entrou em ALERTA");
-        iniciarSessaoEstado(dados.sessaoAlerta);
-        salvarLogEstado();
-
-    } else if (saiuEstado(ALERTA)) {
-        finalizarSessaoEstado(
-            dados.sessaoAlerta
-        );
-
-        exibirDuracaoEstado(
-            ALERTA,
-            dados.sessaoAlerta
-        );
+    if (saiuEstado(ALERTA)) {
+        adicionarEvento(ALERTA_SAIDA);
     }
 
     if (entrouEstado(CRITICO)) {
+        adicionarEvento(CRITICO_ENTRADA);
+    }
 
-        Serial.println("Entrou em CRITICO");
-        iniciarSessaoEstado(dados.sessaoCritico);
-        salvarLogEstado();
-        
-    } else if (saiuEstado(CRITICO)) {
-
-        finalizarSessaoEstado(dados.sessaoCritico);
-        exibirDuracaoEstado(
-            CRITICO,
-            dados.sessaoCritico
-        );
+    if (saiuEstado(CRITICO)) {
+        adicionarEvento(CRITICO_SAIDA);
     }
 
     if (entrouEstado(ERRO_SENSOR)) {
-
-        Serial.println("Sensor falhou");
-        iniciarSessaoEstado(dados.sessaoErroSensor);
-        salvarLogEstado();
-    } else if (saiuEstado(ERRO_SENSOR)) {
-
-        finalizarSessaoEstado(dados.sessaoErroSensor);
-        exibirDuracaoEstado(
-            ERRO_SENSOR,
-            dados.sessaoErroSensor
-        );
+        adicionarEvento(ERRO_SENSOR_ENTRADA);
     }
+
+    if (saiuEstado(ERRO_SENSOR)) {
+        adicionarEvento(ERRO_SENSOR_SAIDA);
+    }
+
+    dados.estadoAnterior = dados.estadoAtual;
 }
 
 void iniciarSessaoEstado(SessaoEstado &sessao) {
@@ -70,7 +145,7 @@ void finalizarSessaoEstado(
     sessao.horas = sessao.minutos / 60.0;
 }
 
-void exibirDuracaoEstado(estadoSistema estado, SessaoEstado sessao) {
+void exibirDuracaoEstado(estadoSistema estado, const SessaoEstado &sessao) {
 
     Serial.printf(
         "Estado %s durou %.2f segundos "

@@ -16,12 +16,17 @@
     Serial.begin(115200);
     conectarWiFi();
 
-    Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+    dados.inicioTentativa = millis();
+
+    Blynk.config(BLYNK_AUTH_TOKEN);
+    Blynk.connect();
+
     pinMode(RED, OUTPUT);
     pinMode(GREEN, OUTPUT);
     pinMode(BLUE, OUTPUT);
 
     pinMode(BUZZER, OUTPUT);
+
 
     dados.milisEstabilizarTermopar = millis();
 
@@ -29,12 +34,14 @@
 
   void loop() {
 
-    Blynk.run(); 
+    estabilizarHoraLocal();
+    conectarBlynk();
 
     atualizarSensores();
     atualizarEstadoSistema();
     atualizarEstadoForno();
     processarEventos();
+    processarFilaEventos();
     tratarSessao();
     atualizarAlertas();
     atualizarHorarioAlarme();

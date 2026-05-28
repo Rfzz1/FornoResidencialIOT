@@ -7,16 +7,19 @@
 
     struct Telemetria {
         bool estadoPisca = false;
-        bool estadoBuzzer = false;
+        bool estadoBuzzerPisca = false;
+        bool buzzerAtivaHorario = false;
         bool horaSincronizada = false;
+        bool timeoutNTP = false;
 
         float TEMP_ATUAL = 0;
         float ULTIMA_TEMP = 0;
-        float tempoLigadoHoras = 0;
-        float tempoLigadoMinutos = 0;
+        uint32_t tempoLigadoHoras = 0;
+        uint32_t tempoLigadoMinutos = 0;
 
         unsigned long milisEstabilizarTermopar = 0;
         unsigned long tempoLigadoSegundos = 0;
+        unsigned long inicioTentativa = 0;
 
         estadoSistema estadoAtual = INICIANDO;
         estadoSistema estadoAnterior = INICIANDO;
@@ -28,19 +31,19 @@
         SessaoEstado sessaoCritico;
         SessaoEstado sessaoErroSensor;
 
-        int HoraInicio = 0;
-        int MinutoInicio = 0;
+        uint32_t HoraInicio = 0;
+        uint32_t MinutoInicio = 0;
 
-        int HoraFim = 0;
-        int MinutoFim = 0;
+        uint32_t HoraFim = 0;
+        uint32_t MinutoFim = 0;
 
-        int HorarioInicio = 0;
-        int HorarioFim = 0;
+        uint32_t HorarioInicio = 0;
+        uint32_t HorarioFim = 0;
 
-        int TempoAlarme = 0;
-        int HoraAtual = 0;
-        int MinutoAtual = 0;
-        int SegundoAtual = 0;
+        uint32_t TempoAlarme = 0;
+        uint32_t HoraAtual = 0;
+        uint32_t MinutoAtual = 0;
+        uint32_t SegundoAtual = 0;
     };
 
     struct SessaoEstado {
@@ -49,11 +52,11 @@
 
     unsigned long duracao = 0;
 
-    float segundos = 0;
+    uint32_t segundos = 0;
 
-    float minutos = 0;
+    uint32_t minutos = 0;
 
-    float horas = 0;
+    uint32_t horas = 0;
 };
 
 extern Telemetria dados;

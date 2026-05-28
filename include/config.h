@@ -48,11 +48,13 @@ const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = -10800; //CARLOS BARBOSA - GMT-3
 const int   daylightOffset_sec = 0;
 
+const int TAMANHO_FILA_EVENTOS = 10;
+
 // =====================================================
 // ENUMS
 // =====================================================
 
-char ssid[];
-char pass[];
+extern char ssid[];
+extern char pass[];
 
 #endif

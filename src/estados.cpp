@@ -87,8 +87,6 @@ void definirEstadoForno() {
 
 void atualizarEstadoSistema() {
 
-  dados.estadoAnterior = dados.estadoAtual;
-
   if (millis() - dados.milisEstabilizarTermopar < 2000) {
 
     dados.estadoAtual = INICIANDO;
