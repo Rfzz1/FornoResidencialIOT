@@ -2,9 +2,9 @@
 #define LOGS_H
 
 void enviarDadosJSON();
-String obterEstadoSistemaTexto();
+String obterEstadoSistemaTexto(estadoSistema estado);
 String obterEstadoFornoTexto();
 void atualizarEnvioLogs();
-void salvarLogCritico();
+void salvarLogEstado();
 
 #endif

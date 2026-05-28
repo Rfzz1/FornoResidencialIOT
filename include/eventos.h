@@ -8,5 +8,8 @@
     void processarEventos();
     bool entrouEstado(estadoSistema estado);
     bool saiuEstado(estadoSistema estado);
+    void exibirDuracaoEstado(estadoSistema estado, SessaoEstado sessao);
+    void iniciarSessaoEstado(SessaoEstado &sessao);
+    void finalizarSessaoEstado(SessaoEstado &sessao);
 
 #endif

@@ -3,6 +3,7 @@
     #include <Arduino.h>
     #include "config.h"
     #include "estados.h"
+    #include "sessao.h"
 
     struct Telemetria {
         bool estadoPisca = false;
@@ -23,6 +24,10 @@
         estadoForno estadoFornoAtual = FORNO_DESLIGADO;
         estadoForno estadoFornoAnterior = FORNO_DESLIGADO;
 
+        SessaoEstado sessaoAlerta;
+        SessaoEstado sessaoCritico;
+        SessaoEstado sessaoErroSensor;
+
         int HoraInicio = 0;
         int MinutoInicio = 0;
 
@@ -37,6 +42,19 @@
         int MinutoAtual = 0;
         int SegundoAtual = 0;
     };
+
+    struct SessaoEstado {
+
+    unsigned long inicio = 0;
+
+    unsigned long duracao = 0;
+
+    float segundos = 0;
+
+    float minutos = 0;
+
+    float horas = 0;
+};
 
 extern Telemetria dados;
 #endif

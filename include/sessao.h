@@ -2,5 +2,4 @@
 #define SESSAO_H
 
 void tratarSessao();
-
 #endif

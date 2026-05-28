@@ -5,38 +5,85 @@
 #include "eventos.h"
 #include "logs.h"
 
-static unsigned long milisDuracaoEstado = 0;
-
 void processarEventos() {
 
     if (entrouEstado(ALERTA)) {
 
         Serial.println("Entrou em ALERTA");
+        iniciarSessaoEstado(dados.sessaoAlerta);
+        salvarLogEstado();
 
-    } 
+    } else if (saiuEstado(ALERTA)) {
+        finalizarSessaoEstado(
+            dados.sessaoAlerta
+        );
+
+        exibirDuracaoEstado(
+            ALERTA,
+            dados.sessaoAlerta
+        );
+    }
 
     if (entrouEstado(CRITICO)) {
 
         Serial.println("Entrou em CRITICO");
-
-        milisDuracaoEstado = millis();
-
-        salvarLogCritico();
+        iniciarSessaoEstado(dados.sessaoCritico);
+        salvarLogEstado();
         
     } else if (saiuEstado(CRITICO)) {
 
-        unsigned long duracao = millis() - milisDuracaoEstado;
-
-        Serial.printf(
-            "Sessão crítica durou %lu segundos\n",
-            duracao / 1000
+        finalizarSessaoEstado(dados.sessaoCritico);
+        exibirDuracaoEstado(
+            CRITICO,
+            dados.sessaoCritico
         );
     }
 
     if (entrouEstado(ERRO_SENSOR)) {
 
         Serial.println("Sensor falhou");
+        iniciarSessaoEstado(dados.sessaoErroSensor);
+        salvarLogEstado();
+    } else if (saiuEstado(ERRO_SENSOR)) {
+
+        finalizarSessaoEstado(dados.sessaoErroSensor);
+        exibirDuracaoEstado(
+            ERRO_SENSOR,
+            dados.sessaoErroSensor
+        );
     }
+}
+
+void iniciarSessaoEstado(SessaoEstado &sessao) {
+    sessao.inicio = millis();
+}
+
+void finalizarSessaoEstado(
+    SessaoEstado &sessao
+) {
+    sessao.duracao = millis() - sessao.inicio;
+
+    sessao.segundos = sessao.duracao / 1000.0;
+
+    sessao.minutos = sessao.segundos / 60.0;
+
+    sessao.horas = sessao.minutos / 60.0;
+}
+
+void exibirDuracaoEstado(estadoSistema estado, SessaoEstado sessao) {
+
+    Serial.printf(
+        "Estado %s durou %.2f segundos "
+        "(%.2f minutos, %.2f horas)\n",
+
+        obterEstadoSistemaTexto(estado).c_str(),
+
+        sessao.segundos,
+
+        sessao.minutos,
+
+        sessao.horas
+    );
 }
 
 bool entrouEstado(estadoSistema estado) {

@@ -11,9 +11,9 @@ static unsigned long milisAtualizarLogs = 0;
 // CONVERTE ESTADO SISTEMA PARA TEXTO
 // =====================================================
 
-String obterEstadoSistemaTexto() {
+String obterEstadoSistemaTexto(estadoSistema estado) {
 
-    switch (dados.estadoAtual) {
+    switch (estado) {
 
         case INICIANDO:
             return "INICIANDO";
@@ -84,16 +84,16 @@ void atualizarEnvioLogs() {
     }
 }
 
-void salvarLogCritico() {
-    JsonDocument criticoDoc;
-    Serial.println("LOG CRÍTICO: O sistema entrou em estado CRÍTICO. Verificar imediatamente!");
-    criticoDoc["temperatura"]["atual"] = dados.TEMP_ATUAL;
-    criticoDoc["estado_sistema"] = obterEstadoSistemaTexto();
-    criticoDoc["horario_atual"] = obterHorarioFormatado();
+void salvarLogEstado() {
+    JsonDocument estadoDoc;
+    Serial.printf("LOG: O sistema entrou em estado %d. Verificar imediatamente!", dados.estadoAnterior);
+    estadoDoc["temperatura"]["atual"] = dados.TEMP_ATUAL;
+    estadoDoc["estado_sistema"] = obterEstadoSistemaTexto();
+    estadoDoc["horario_atual"] = obterHorarioFormatado();
     printLocalTime();
 
-    String jsonCritico;
-    serializeJson(criticoDoc, jsonCritico);
-    Serial.println("Detalhes do Log Crítico:");
-    Serial.println(jsonCritico);
+    String jsonEstado;
+    serializeJson(estadoDoc, jsonEstado);
+    Serial.printf("Detalhes do Log %d:", dados.estadoAnterior);
+    Serial.println(jsonEstado);
 }
