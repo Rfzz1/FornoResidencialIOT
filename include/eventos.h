@@ -5,17 +5,6 @@
     #include "estados.h"
     #include "telemetria.h"
 
-    void processarEventos();
-    bool entrouEstado(estadoSistema estado);
-    bool saiuEstado(estadoSistema estado);
-    void exibirDuracaoEstado(estadoSistema estado, SessaoEstado &sessao);
-    void iniciarSessaoEstado(SessaoEstado &sessao);
-    void finalizarSessaoEstado(SessaoEstado &sessao);
-    void adicionarEvento(eventoSistema evento);
-    void processarFilaEventos();
-    void processarEvento();
-    void tratarEvento(eventoSistema evento);
-
     enum eventoSistema {
         NENHUM,
         ALERTA_ENTRADA,
@@ -25,5 +14,15 @@
         ERRO_SENSOR_ENTRADA,
         ERRO_SENSOR_SAIDA
     };
+
+    bool entrouEstado(estadoSistema estado);
+    bool saiuEstado(estadoSistema estado);
+    void exibirDuracaoEstado(estadoSistema estado,const SessaoEstado &sessao);
+    void iniciarSessaoEstado(SessaoEstado &sessao);
+    void finalizarSessaoEstado(SessaoEstado &sessao);
+    void adicionarEvento(eventoSistema evento);
+    void processarFilaEventos();
+    void processarEventos();
+    void tratarEvento(eventoSistema evento);
 
 #endif

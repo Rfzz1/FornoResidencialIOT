@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include "config.h"
 #include <BlynkSimpleEsp32.h>
 #include "iot.h"
-#include "config.h"
 #include "logs.h"
 #include <time.h>
 #include "telemetria.h"
@@ -14,6 +14,11 @@ static unsigned long milisAtualizarHorarioAlarme = 0;
 static unsigned long ultimoEnvioBlynk = 0;
 static unsigned long milisEstabilizarWiFi = 0;
 static unsigned long tentativaNTP = 0;
+
+void iniciarBlynk() {
+    Blynk.config(BLYNK_AUTH_TOKEN);
+    Blynk.connect();
+}
 
 void conectarWiFi() {
     WiFi.begin(ssid, pass);

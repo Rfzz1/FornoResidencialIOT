@@ -18,8 +18,7 @@
 
     dados.inicioTentativa = millis();
 
-    Blynk.config(BLYNK_AUTH_TOKEN);
-    Blynk.connect();
+    iniciarBlynk();  
 
     pinMode(RED, OUTPUT);
     pinMode(GREEN, OUTPUT);

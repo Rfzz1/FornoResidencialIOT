@@ -5,15 +5,15 @@
 // PINOS
 // =====================================================
 
-#define RED 25
-#define GREEN 26
-#define BLUE 27
+#define RED 23
+#define GREEN 22
+#define BLUE 21
 
 #define TERMOPAR_SO 19
 #define TERMOPAR_CS 5
 #define TERMOPAR_SCK 18
 
-#define BUZZER 23
+#define BUZZER 15
 
 #define BLYNK_TEMPLATE_ID "TMPL2oYlTOGoQ"
 #define BLYNK_TEMPLATE_NAME "Monitoramento de Forno"
@@ -23,7 +23,6 @@
 #include <math.h>
 #include <MAX6675.h>
 #include <WiFi.h>
-#include <BlynkSimpleEsp32.h> 
 
 // =====================================================
 // SENSOR
@@ -44,9 +43,9 @@ const float TEMP_MAXIMA_VALIDA = 400;
 
 const float MARGEM_ESTABILIDADE = 2.0;
 
-const char* ntpServer = "pool.ntp.org";
-const long  gmtOffset_sec = -10800; //CARLOS BARBOSA - GMT-3
-const int   daylightOffset_sec = 0;
+constexpr const char* ntpServer = "pool.ntp.org";
+constexpr long  gmtOffset_sec = -10800; //CARLOS BARBOSA - GMT-3
+constexpr int   daylightOffset_sec = 0;
 
 const int TAMANHO_FILA_EVENTOS = 10;
 
