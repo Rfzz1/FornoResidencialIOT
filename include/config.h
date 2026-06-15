@@ -33,11 +33,11 @@ extern MAX6675 TERMOPAR;
 // CONSTANTES
 // =====================================================
 
-const float TEMP_CRITICA_ENTRADA = 250;
-const float TEMP_CRITICA_SAIDA = 240;
+const float TEMP_CRITICA_ENTRADA = 300;
+const float TEMP_CRITICA_SAIDA = 290;
 
-const float TEMP_ALERTA_ENTRADA = 200;
-const float TEMP_ALERTA_SAIDA = 190;
+const float TEMP_ALERTA_ENTRADA = 250;
+const float TEMP_ALERTA_SAIDA = 240;
 
 const float TEMP_MAXIMA_VALIDA = 400;
 

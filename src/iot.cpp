@@ -7,7 +7,7 @@
 #include <time.h>
 #include "telemetria.h"
 
-char ssid[] = "SENAI-TurmaTI_5G";
+char ssid[] = "SENAI-TurmaTI";
 char pass[] = "SenaiGaribaldiCeit";
 static unsigned long milisAtualizarHoraLocal = 0;
 static unsigned long milisAtualizarHorarioAlarme = 0;

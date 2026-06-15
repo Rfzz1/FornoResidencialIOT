@@ -5,6 +5,7 @@
 
 static unsigned long milisInicioSessao = 0;
 static unsigned long tempoLigado = 0;
+static uint32_t ultimoSegundoExibido = 0;
 
 void tratarSessao() {
 
@@ -22,12 +23,18 @@ void tratarSessao() {
     tempoLigado = millis() - milisInicioSessao;
 
     dados.tempoLigadoSegundos = tempoLigado / 1000;
+    dados.tempoLigadoMinutos = dados.tempoLigadoSegundos / 60;
+    dados.tempoLigadoHoras = dados.tempoLigadoMinutos / 60;
 
-    Serial.print("Tempo ligado: ");
-    Serial.print(dados.tempoLigadoSegundos);
-    Serial.println(" segundos");
+    if (dados.tempoLigadoSegundos != ultimoSegundoExibido) {
 
-  }
+        ultimoSegundoExibido = dados.tempoLigadoSegundos;
+
+        Serial.print("Tempo ligado: ");
+        Serial.print(dados.tempoLigadoSegundos);
+        Serial.println(" segundos");
+    }
+}
 
   if (dados.estadoFornoAnterior != FORNO_DESLIGADO &&
       dados.estadoFornoAtual == FORNO_DESLIGADO) {
