@@ -4,6 +4,13 @@
 #include <Preferences.h>
 #include "BluetoothSerial.h"
 #include "config.h"
+#include "telemetria.h"
+#include "iot.h"
+#include "estados.h"
+#include "sessao.h"
+#include "alertas.h"
+#include "logs.h"
+#include "eventos.h"
 
 BluetoothSerial SerialBT;
 Preferences preferences;
@@ -17,6 +24,9 @@ double temperaturaAtual;
 double temperaturaUltima;
 JsonDocument doc;
 HTTPClient http; //Inicializa o cliente HTTP
+
+static bool aguardandoReinicio = false;
+static unsigned long tempoInicioReinicio = 0;
 
 void fazerLogin() {
 
@@ -143,9 +153,10 @@ void inicializarPreferences() {
         return;
     }
 
-    serialNumber = preferences.getString("serialNumber", "");
-    deviceSecret = preferences.getString("secret", "");
+    serialNumber = preferences.getString("serialNumber", ""); //Tenta carregar o número de série salvo, se não existir, retorna uma string vazia
+    deviceSecret = preferences.getString("secret", ""); //Tenta carregar o segredo do dispositivo salvo, se não existir, retorna uma string vazia
 
+    //Se o número de série não existir, gera um novo a partir do MAC address do WiFi, remove os ":" e salva nas Preferences
     if (serialNumber.isEmpty()) {
         serialNumber = WiFi.macAddress();
         serialNumber.replace(":", "");
@@ -186,6 +197,7 @@ void processarBluetooth() {
             comando.substring(11);
 
         deviceSecret = secret;
+        dados.espConfigurado = true;
 
         preferences.putString(
             "secret",
@@ -193,9 +205,52 @@ void processarBluetooth() {
         );
 
         SerialBT.println("OK");
+        Serial.println("Configuração recebida. Reiniciando em 2 segundos...");
 
+        tempoInicioReinicio = millis();
+        aguardandoReinicio = true;
         return;
     }
+}
+
+void verificarReiniciar() {
+    if (aguardandoReinicio && (millis() - tempoInicioReinicio >= 2000)) {
+        ESP.restart();
+    }
+}
+
+void verificarEstadoDispositivo() {
+    
+    String secretSalvo = preferences.getString("secret", "");
+
+    if (secretSalvo.isEmpty()) {
+      dados.espConfigurado = false;
+      Serial.println("Dispositivo não configurado. Aguardando configuração via Bluetooth...");
+    } else {
+        Serial.println("Dispositivo configurado. Pronto para uso.");
+        dados.espConfigurado = true;
+        conectarWiFi();
+        fazerLogin();
+    }
+
+}
+
+void gerenciarEstadoOperacional() {
+  if (!dados.espConfigurado) {
+    processarBluetooth();
+    //Adicionar um led piscando para indicar que o dispositivo está aguardando configuração
+    return;
+  } else {
+    atualizarEstadoSistema();
+    atualizarEstadoForno();
+    processarEventos();
+    processarFilaEventos();
+    tratarSessao();
+    atualizarAlertas();
+    atualizarHorarioAlarme();
+    atualizarEnvioLogs();
+    atualizarEnvioBlynk();
+  }
 }
 
 String obterSerialNumber() {

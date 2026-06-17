@@ -2,27 +2,20 @@
   #include <ArduinoJson.h>
   #include "config.h"
   #include "sensores.h"
-  #include "estados.h"
   #include "leds.h"
   #include "buzzer.h"
-  #include "sessao.h"
-  #include "alertas.h"
-  #include "logs.h"
-  #include "iot.h"
-  #include "telemetria.h"
-  #include "eventos.h"
   #include "api.h"
+  #include "telemetria.h"
+  #include "iot.h"
 
   void setup() {
 
     Serial.begin(115200);
-    conectarWiFi();
+    verificarEstadoDispositivo();
 
     dados.inicioTentativa = millis();
 
     iniciarBlynk();  
-    inicializarPreferences();
-    processarBluetooth();
 
     pinMode(RED, OUTPUT);
     pinMode(GREEN, OUTPUT);
@@ -41,15 +34,10 @@
     conectarBlynk();
 
     atualizarSensores();
-    atualizarEstadoSistema();
-    atualizarEstadoForno();
-    processarEventos();
-    processarFilaEventos();
-    tratarSessao();
-    atualizarAlertas();
-    atualizarHorarioAlarme();
-    atualizarEnvioLogs();
-    atualizarEnvioBlynk();
+
+    verificarReiniciar();
+    gerenciarEstadoOperacional();
+
     atualizarLEDs();
     atualizarBuzzer();
 

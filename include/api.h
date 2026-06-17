@@ -9,5 +9,8 @@ void enviarTemperatura();
 String obterSerialNumber();
 void processarBluetooth();
 void inicializarPreferences();
+void verificarEstadoDispositivo();
+void gerenciarEstadoOperacional();
+void verificarReiniciar();
 
 #endif

@@ -23,6 +23,7 @@
         bool buzzerAtivaHorario = false;
         bool horaSincronizada = false;
         bool timeoutNTP = false;
+        bool espConfigurado = false;
 
         float TEMP_ATUAL = 0;
         float ULTIMA_TEMP = 0;
