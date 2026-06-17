@@ -1,4 +1,5 @@
   #include <Arduino.h>
+  #include <ArduinoJson.h>
   #include "config.h"
   #include "sensores.h"
   #include "estados.h"
@@ -10,6 +11,7 @@
   #include "iot.h"
   #include "telemetria.h"
   #include "eventos.h"
+  #include "api.h"
 
   void setup() {
 
@@ -19,6 +21,7 @@
     dados.inicioTentativa = millis();
 
     iniciarBlynk();  
+    enviarSerialNumber();
 
     pinMode(RED, OUTPUT);
     pinMode(GREEN, OUTPUT);
