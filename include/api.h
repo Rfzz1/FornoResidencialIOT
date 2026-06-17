@@ -3,9 +3,9 @@
 
 void fazerLogin();
 void enviarSerialNumber();
-//void iniciarSessao();
-//void encerrarSessao();
-//void enviarTemperatura();
+void iniciarSessao();
+void encerrarSessao();
+void enviarTemperatura();
 //void enviarEvento(String tipo);
 
 #endif
