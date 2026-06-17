@@ -21,7 +21,8 @@
     dados.inicioTentativa = millis();
 
     iniciarBlynk();  
-    enviarSerialNumber();
+    inicializarPreferences();
+    processarBluetooth();
 
     pinMode(RED, OUTPUT);
     pinMode(GREEN, OUTPUT);

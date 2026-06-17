@@ -1,16 +1,20 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
+#include "BluetoothSerial.h"
 #include "config.h"
+
+BluetoothSerial SerialBT;
+Preferences preferences;
 
 String tokenJWT = "";
 String sessaoId = "";
 String serialNumber;
-String email;
-String senha;
+String deviceSecret;
 String body;
-String temperaturaAtual;
-String temperaturaUltima;
+double temperaturaAtual;
+double temperaturaUltima;
 JsonDocument doc;
 HTTPClient http; //Inicializa o cliente HTTP
 
@@ -18,12 +22,13 @@ void fazerLogin() {
 
   doc.clear();
   
-  http.begin("http://192.168.0.129:8080/v1/auth/login"); //Rota de login da API
+  http.begin("http://192.168.0.129:8080/v1/fornos/auth"); //Rota de login da API
   http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
 
-  doc["email"] = email; //Adiciona o email ao documento JSON
-  doc["senha"] = senha; //Adiciona a senha ao documento JSON
+  doc["serialNumber"] = serialNumber; //Adiciona o número de série ao documento JSON
+  doc["secret"] = deviceSecret; //Adiciona o segredo do dispositivo ao documento JSON
 
+  body = "";
   serializeJson(doc, body); //Serializa o documento JSON para uma string
 
   int httpResponseCode = http.POST(body); //Envia a requisição POST para a API
@@ -48,8 +53,15 @@ void iniciarSessao() {
 
   http.begin("http://192.168.0.129:8080/v1/sessoes/iniciar"); //Rota de início de sessão da API
   http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
+
+  if(tokenJWT.isEmpty()){
+    Serial.println("Usuário não autenticado");
+    return;
+  }
+
   http.addHeader("Authorization", "Bearer " + tokenJWT); //Adiciona o token JWT no cabeçalho de autorização
 
+  body = "";
   int httpResponseCode = http.POST(body); //Envia a requisição POST para a API
 
   if (httpResponseCode == 201) {
@@ -72,9 +84,16 @@ void encerrarSessao() {
 
   http.begin("http://192.168.0.129:8080/v1/sessoes/" + sessaoId + "/encerrar"); //Rota para encerrar sessão
   http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
+
+  if(tokenJWT.isEmpty()){
+      Serial.println("Usuário não autenticado");
+      return;
+  }
+
   http.addHeader("Authorization", "Bearer " + tokenJWT); //Adiciona o token JWT no cabeçalho de autorização
 
-  int httpResponseCode = http.PUT(""); //Envia a requisição PUT para a API
+  body = "";
+  int httpResponseCode = http.PUT(body); //Envia a requisição PUT para a API
 
   if (httpResponseCode == 200) {
     Serial.println("Sessão encerrada com sucesso.");
@@ -92,13 +111,19 @@ void enviarTemperatura() {
 
   http.begin("http://192.168.0.129:8080/v1/temperaturas"); //Rota para enviar temperatura
   http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
-  http.addHeader("Authorization", "Bearer " + tokenJWT); //Adiciona o
+
+  if(tokenJWT.isEmpty()){
+    Serial.println("Usuário não autenticado");
+    return;
+  }
+
+  http.addHeader("Authorization", "Bearer " + tokenJWT);
 
   doc["sessaoId"] = sessaoId; //Adiciona o ID da sessão ao documento JSON
   doc["temperaturaAtual"] = temperaturaAtual; //Adiciona a temperatura atual ao documento JSON
   doc["temperaturaUltima"] = temperaturaUltima; //Adiciona a última temperatura ao documento JSON
-  doc["email"] = email; //Adiciona o email ao documento JSON
 
+  body = "";
   serializeJson(doc, body); //Serializa o documento JSON para uma string
   int httpResponseCode = http.POST(body); //Envia a requisição POST para a API
 
@@ -112,23 +137,67 @@ void enviarTemperatura() {
   http.end();
 }
 
-void enviarSerialNumber() {
+void inicializarPreferences() {
+    if (!preferences.begin("forno", false)) {
+        Serial.println("Falha ao iniciar Preferences");
+        return;
+    }
 
-  doc.clear();
+    serialNumber = preferences.getString("serialNumber", "");
+    deviceSecret = preferences.getString("secret", "");
 
-  serialNumber = WiFi.macAddress();
+    if (serialNumber.isEmpty()) {
+        serialNumber = WiFi.macAddress();
+        serialNumber.replace(":", "");
+        preferences.putString("serialNumber", serialNumber);
+        Serial.println("Número de série gerado e armazenado: " + serialNumber);
+    }
 
-  serialNumber.replace(":", "");
+    Serial.println("Serial carregado: " + serialNumber);
 
-  doc["serialNumber"] = serialNumber;
+    Serial.println("Secret carregado: " + deviceSecret);
+}
 
-  serializeJson(doc, body);
+void processarBluetooth() {
+      if(!SerialBT.available()) {
+        return;
+    }
 
-  Serial.println(body);
+    String comando =
+        SerialBT.readStringUntil('\n');
 
-  http.begin("http://192.168.0.129:8080/v1/fornos/registrar");
+    comando.trim();
 
-  http.addHeader("Content-Type", "application/json");
+    if(comando == "GET_SERIAL") {
 
-  int responseCode = http.POST(body);
+        String serial =
+            WiFi.macAddress();
+
+        serial.replace(":", "");
+
+        SerialBT.println(serial);
+
+        return;
+    }
+
+    if(comando.startsWith("SET_SECRET:")) {
+
+        String secret =
+            comando.substring(11);
+
+        deviceSecret = secret;
+
+        preferences.putString(
+            "secret",
+            deviceSecret
+        );
+
+        SerialBT.println("OK");
+
+        return;
+    }
+}
+
+String obterSerialNumber() {
+  return serialNumber;
 }
