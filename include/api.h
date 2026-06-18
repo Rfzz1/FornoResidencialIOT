@@ -12,5 +12,7 @@ void inicializarPreferences();
 void verificarEstadoDispositivo();
 void gerenciarEstadoOperacional();
 void verificarReiniciar();
+void sincronizarTemperaturas();
+void enviarEvento(String tipo);
 
 #endif

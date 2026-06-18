@@ -147,6 +147,38 @@ void enviarTemperatura() {
   http.end();
 }
 
+void enviarEvento(String tipo) {
+
+  doc.clear();
+
+  http.begin("http://192.168.0.129:8080/v1/eventos"); //Rota para enviar evento
+  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
+
+  if(tokenJWT.isEmpty()){
+    Serial.println("Usuário não autenticado");
+    return;
+  }
+
+  http.addHeader("Authorization", "Bearer " + tokenJWT);
+
+  doc["sessaoId"] = sessaoId; //Adiciona o ID da sessão ao documento JSON
+  doc["tipo"] = tipo; //Adiciona o tipo de evento ao documento JSON
+
+  body = "";
+  serializeJson(doc, body); //Serializa o documento JSON para uma string
+  int httpResponseCode = http.POST(body); //Envia a requisição POST para a API
+
+  if (httpResponseCode == 201) {
+    Serial.println("Evento enviado com sucesso.");
+  } else {
+    Serial.print("Erro ao enviar evento: ");
+    Serial.println(httpResponseCode);
+  }
+
+  http.end();
+
+}
+
 void inicializarPreferences() {
     if (!preferences.begin("forno", false)) {
         Serial.println("Falha ao iniciar Preferences");
@@ -251,6 +283,12 @@ void gerenciarEstadoOperacional() {
     atualizarEnvioLogs();
     atualizarEnvioBlynk();
   }
+}
+
+void sincronizarTemperaturas() {
+    temperaturaAtual = dados.TEMP_ATUAL;
+    temperaturaUltima = dados.ULTIMA_TEMP;
+    enviarTemperatura();
 }
 
 String obterSerialNumber() {

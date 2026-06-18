@@ -4,6 +4,7 @@
 #include "estados.h"
 #include "eventos.h"
 #include "logs.h"
+#include "api.h"
 
 eventoSistema filaEventos[TAMANHO_FILA_EVENTOS];
 int inicioFila = 0;
@@ -44,6 +45,7 @@ void tratarEvento(eventoSistema evento) {
             iniciarSessaoEstado(
                 dados.sessaoAlerta
             );
+            enviarEvento("ALERTA_ENTRADA");
 
             salvarLogEstado();
 
@@ -55,6 +57,7 @@ void tratarEvento(eventoSistema evento) {
             finalizarSessaoEstado(
                 dados.sessaoAlerta
             );
+            enviarEvento("ALERTA_SAIDA");
 
             exibirDuracaoEstado(
                 ALERTA,
@@ -67,13 +70,18 @@ void tratarEvento(eventoSistema evento) {
             iniciarSessaoEstado(
                 dados.sessaoCritico
             );
+            enviarEvento("CRITICO_ENTRADA");
+
             salvarLogEstado();
+
             Serial.println("Entrou em CRÍTICO");
             break;
         case CRITICO_SAIDA:
             finalizarSessaoEstado(
                 dados.sessaoCritico
             );
+            enviarEvento("CRITICO_SAIDA");
+
             exibirDuracaoEstado(
                 CRITICO,
                 dados.sessaoCritico
@@ -83,12 +91,16 @@ void tratarEvento(eventoSistema evento) {
             iniciarSessaoEstado(
                 dados.sessaoErroSensor
             );
+            enviarEvento("ERRO_SENSOR_ENTRADA");
+
             Serial.println("Evento: Entrada no estado de Erro de Sensor");
             break;
         case ERRO_SENSOR_SAIDA:
             finalizarSessaoEstado(
                 dados.sessaoErroSensor
             );
+            enviarEvento("ERRO_SENSOR_SAIDA");
+            
             exibirDuracaoEstado(
                 ERRO_SENSOR,
                 dados.sessaoErroSensor

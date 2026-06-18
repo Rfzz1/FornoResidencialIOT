@@ -2,6 +2,7 @@
 #include "config.h"
 #include "sessao.h"
 #include "telemetria.h"
+#include "api.h"
 
 static unsigned long milisInicioSessao = 0;
 static unsigned long tempoLigado = 0;
@@ -13,6 +14,7 @@ void tratarSessao() {
       dados.estadoFornoAnterior == FORNO_DESLIGADO) {
 
     milisInicioSessao = millis();
+    iniciarSessao();
 
     Serial.println("Sessao iniciada!");
 
@@ -39,14 +41,16 @@ void tratarSessao() {
   if (dados.estadoFornoAnterior != FORNO_DESLIGADO &&
       dados.estadoFornoAtual == FORNO_DESLIGADO) {
 
-    Serial.println("Sessao encerrada!");
+        encerrarSessao();
 
-    Serial.print("Tempo total ligado: ");
-    Serial.print(dados.tempoLigadoSegundos);
-    Serial.println(" segundos");
+        Serial.println("Sessao encerrada!");
 
-    tempoLigado = 0;
-    dados.tempoLigadoSegundos = 0;
+        Serial.print("Tempo total ligado: ");
+        Serial.print(dados.tempoLigadoSegundos);
+        Serial.println(" segundos");
+
+        tempoLigado = 0;
+        dados.tempoLigadoSegundos = 0;
 
   }
 }

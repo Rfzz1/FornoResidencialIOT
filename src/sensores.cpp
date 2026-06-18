@@ -3,8 +3,10 @@
 #include "config.h"
 #include "sensores.h"
 #include "telemetria.h"
+#include "api.h"
 
 static unsigned long ultimaLeituraSensor = 0;
+static unsigned long ultimoEnvioTemperatura = 0;
 
 MAX6675 TERMOPAR(TERMOPAR_SCK, TERMOPAR_CS, TERMOPAR_SO);
 
@@ -25,11 +27,21 @@ void atualizarSensores() {
   if (millis() - ultimaLeituraSensor >= 1000) {
 
     ultimaLeituraSensor = millis();
-
     lerTemperatura();
-
   }
 
+  if(millis() - ultimoEnvioTemperatura >= 5000) {
+
+    ultimoEnvioTemperatura = millis();
+
+    if (temperaturaValida()) {
+        sincronizarTemperaturas();
+    } else {
+        // Se a temperatura não for válida, podemos optar por não enviar ou enviar um valor específico
+        Serial.println("Temperatura inválida. Não enviando dados para a API.");
+    }
+
+  }
 }
 
 bool temperaturaValida() {
