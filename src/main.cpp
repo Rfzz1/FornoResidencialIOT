@@ -33,8 +33,6 @@
     estabilizarHoraLocal();
     conectarBlynk();
 
-    atualizarSensores();
-
     verificarReiniciar();
     gerenciarEstadoOperacional();
 

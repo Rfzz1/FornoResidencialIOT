@@ -11,6 +11,7 @@
 #include "alertas.h"
 #include "logs.h"
 #include "eventos.h"
+#include "sensores.h"
 
 BluetoothSerial SerialBT;
 Preferences preferences;
@@ -273,6 +274,7 @@ void gerenciarEstadoOperacional() {
     //Adicionar um led piscando para indicar que o dispositivo está aguardando configuração
     return;
   } else {
+    atualizarSensores();
     atualizarEstadoSistema();
     atualizarEstadoForno();
     processarEventos();
