@@ -33,7 +33,7 @@ void fazerLogin() {
 
   doc.clear();
   
-  http.begin("http://192.168.0.129:8080/v1/fornos/auth"); //Rota de login da API
+  http.begin("http://192.168.0.126:8080/v1/fornos/auth"); //Rota de login da API
   http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
 
   doc["serialNumber"] = serialNumber; //Adiciona o número de série ao documento JSON
@@ -60,16 +60,16 @@ void fazerLogin() {
 
 void iniciarSessao() {
 
-  doc.clear();
-
-  http.begin("http://192.168.0.129:8080/v1/sessoes/iniciar"); //Rota de início de sessão da API
-  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
-
+  
   if(tokenJWT.isEmpty()){
     Serial.println("Usuário não autenticado");
     return;
   }
 
+  doc.clear();
+
+  http.begin("http://192.168.0.126:8080/v1/sessoes/iniciar"); //Rota de início de sessão da API
+  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
   http.addHeader("Authorization", "Bearer " + tokenJWT); //Adiciona o token JWT no cabeçalho de autorização
 
   body = "";
@@ -83,6 +83,11 @@ void iniciarSessao() {
   } else {
     Serial.print("Erro ao iniciar sessão: ");
     Serial.println(httpResponseCode);
+
+    if (httpResponseCode == 401 || httpResponseCode == 403) {
+      tokenJWT = "";
+      Serial.println("Token expirado ou inválido. Forçando novo login...");
+    }
   }
 
   http.end();
@@ -91,15 +96,16 @@ void iniciarSessao() {
 
 void encerrarSessao() {
 
+  
+  if(tokenJWT.isEmpty()){
+    Serial.println("Usuário não autenticado");
+    return;
+  }
+
   doc.clear();
 
-  http.begin("http://192.168.0.129:8080/v1/sessoes/" + sessaoId + "/encerrar"); //Rota para encerrar sessão
+  http.begin("http://192.168.0.126:8080/v1/sessoes/" + sessaoId + "/encerrar"); //Rota para encerrar sessão
   http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
-
-  if(tokenJWT.isEmpty()){
-      Serial.println("Usuário não autenticado");
-      return;
-  }
 
   http.addHeader("Authorization", "Bearer " + tokenJWT); //Adiciona o token JWT no cabeçalho de autorização
 
@@ -118,15 +124,16 @@ void encerrarSessao() {
 
 void enviarTemperatura() {
 
-  doc.clear();
-
-  http.begin("http://192.168.0.129:8080/v1/temperaturas"); //Rota para enviar temperatura
-  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
-
+  
   if(tokenJWT.isEmpty()){
     Serial.println("Usuário não autenticado");
     return;
   }
+
+  doc.clear();
+
+  http.begin("http://192.168.0.126:8080/v1/temperaturas"); //Rota para enviar temperatura
+  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
 
   http.addHeader("Authorization", "Bearer " + tokenJWT);
 
@@ -143,6 +150,11 @@ void enviarTemperatura() {
   } else {
     Serial.print("Erro ao enviar temperatura: ");
     Serial.println(httpResponseCode);
+
+    if (httpResponseCode == 401 || httpResponseCode == 403) {
+      tokenJWT = "";  
+      Serial.println("Token expirado ou inválido. Forçando novo login...");
+    }
   }
 
   http.end();
@@ -150,15 +162,16 @@ void enviarTemperatura() {
 
 void enviarEvento(String tipo) {
 
-  doc.clear();
-
-  http.begin("http://192.168.0.129:8080/v1/eventos"); //Rota para enviar evento
-  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
-
+  
   if(tokenJWT.isEmpty()){
     Serial.println("Usuário não autenticado");
     return;
   }
+
+  doc.clear();
+
+  http.begin("http://192.168.0.126:8080/v1/eventos"); //Rota para enviar evento
+  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
 
   http.addHeader("Authorization", "Bearer " + tokenJWT);
 
@@ -174,6 +187,12 @@ void enviarEvento(String tipo) {
   } else {
     Serial.print("Erro ao enviar evento: ");
     Serial.println(httpResponseCode);
+
+    if (httpResponseCode == 401 || httpResponseCode == 403) {
+        tokenJWT = "";
+        Serial.println("Token expirado ou inválido. Forçando novo login...");
+    }
+
   }
 
   http.end();
@@ -274,6 +293,11 @@ void gerenciarEstadoOperacional() {
     //Adicionar um led piscando para indicar que o dispositivo está aguardando configuração
     return;
   } else {
+
+    if (tokenJWT.isEmpty() && WiFi.status() == WL_CONNECTED) {
+        fazerLogin();
+    }
+
     atualizarSensores();
     atualizarEstadoSistema();
     atualizarEstadoForno();

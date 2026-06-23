@@ -7,19 +7,28 @@
 
 static unsigned long ultimaLeituraSensor = 0;
 static unsigned long ultimoEnvioTemperatura = 0;
+static float leituraBruta = 0;
 
 MAX6675 TERMOPAR(TERMOPAR_SCK, TERMOPAR_CS, TERMOPAR_SO);
 
 void lerTemperatura() {
 
     dados.ULTIMA_TEMP = dados.TEMP_ATUAL;
+    
+    leituraBruta = TERMOPAR.readCelsius();
 
-    dados.TEMP_ATUAL = TERMOPAR.readCelsius();
+    if(dados.TEMP_ATUAL == 0) {
+      dados.TEMP_ATUAL = leituraBruta;
+      return;
+    }
 
-    Serial.printf(
-        "Temperatura: %.2f °C\n",
-        dados.TEMP_ATUAL
-    );
+    if(!isnan(leituraBruta)) {
+        dados.TEMP_ATUAL = (dados.TEMP_ATUAL * 0.7) + (leituraBruta * 0.3);
+    } else {
+        dados.TEMP_ATUAL = leituraBruta;
+    }
+
+    Serial.printf("Temperatura Filtrada: %.2f °C (Bruta: %.2f °C)\n", dados.TEMP_ATUAL, leituraBruta);
 }
 
 void atualizarSensores() {

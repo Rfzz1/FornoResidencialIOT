@@ -14,6 +14,7 @@ static unsigned long milisAtualizarHorarioAlarme = 0;
 static unsigned long ultimoEnvioBlynk = 0;
 static unsigned long milisEstabilizarWiFi = 0;
 static unsigned long tentativaNTP = 0;
+static unsigned long ultimaTentativaBlynk = 0;
 
 void iniciarBlynk() {
     Blynk.config(BLYNK_AUTH_TOKEN);
@@ -39,12 +40,15 @@ void conectarBlynk() {
     if (WiFi.status() == WL_CONNECTED) {
 
         if (!Blynk.connected()) {
-
-            Blynk.connect(1000);
-
+            if(millis() - ultimaTentativaBlynk >= 15000) {
+                ultimaTentativaBlynk = millis();
+                Serial.println("Tentando reconectar ao Blynk de forma assíncrona...");
+                Blynk.connect(100);
+            }
+        } else {
+            Blynk.run();
         }
-
-        Blynk.run();
+        
     } else {
         Serial.println("WiFi desconectado. Tentando reconectar...");
         conectarWiFi();
