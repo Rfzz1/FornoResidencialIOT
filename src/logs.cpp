@@ -65,6 +65,7 @@ void enviarDadosJSON() {
 
     doc["temperatura"]["atual"] = dados.TEMP_ATUAL;
     doc["temperatura"]["ultima"] = dados.ULTIMA_TEMP;
+    doc["temperatura"]["externa"] = dados.TEMP_EXT_ATUAL;
     doc["estado_sistema"] = obterEstadoSistemaTexto(dados.estadoAtual);
     doc["estado_forno"] = obterEstadoFornoTexto();
     doc["tempo_ligado"] = dados.tempoLigadoHoras;
@@ -91,6 +92,7 @@ void salvarLogEstado() {
     if(dados.estadoAnterior != dados.estadoAtual) {
         Serial.printf("LOG: O sistema entrou em estado %s. Verificar imediatamente!", obterEstadoSistemaTexto(dados.estadoAtual).c_str());
         estadoDoc["temperatura"]["atual"] = dados.TEMP_ATUAL;
+        estadoDoc["temperatura"]["externa"] = dados.TEMP_EXT_ATUAL;
         estadoDoc["estado_sistema"] = obterEstadoSistemaTexto(dados.estadoAtual);
         estadoDoc["horario_atual"] = obterHorarioFormatado();
 

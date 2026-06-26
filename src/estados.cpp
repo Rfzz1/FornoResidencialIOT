@@ -24,6 +24,12 @@ void definirEstadoSistema() {
 
       }
 
+      if (dados.TEMP_EXT_ATUAL >= TEMP_EXT_MAXIMA) {
+
+        dados.estadoAtual = ALERTA;
+
+      }
+
       break;
 
     case ALERTA:
@@ -33,6 +39,12 @@ void definirEstadoSistema() {
         dados.estadoAtual = CRITICO;
 
       } else if (dados.TEMP_ATUAL < TEMP_ALERTA_SAIDA) {
+
+        dados.estadoAtual = SEGURO;
+
+      }
+
+      if (dados.TEMP_EXT_ATUAL < TEMP_EXT_MAXIMA) {
 
         dados.estadoAtual = SEGURO;
 

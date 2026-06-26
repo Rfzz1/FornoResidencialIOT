@@ -33,7 +33,7 @@ void fazerLogin() {
 
   doc.clear();
   
-  http.begin("http://192.168.0.126:8080/v1/fornos/auth"); //Rota de login da API
+  http.begin("http://56.125.180.47:8080/v1/fornos/auth"); //Rota de login da API
   http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
 
   doc["serialNumber"] = serialNumber; //Adiciona o número de série ao documento JSON
@@ -68,7 +68,7 @@ void iniciarSessao() {
 
   doc.clear();
 
-  http.begin("http://192.168.0.126:8080/v1/sessoes/iniciar"); //Rota de início de sessão da API
+  http.begin("http://56.125.180.47:8080/v1/sessoes/iniciar"); //Rota de início de sessão da API
   http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
   http.addHeader("Authorization", "Bearer " + tokenJWT); //Adiciona o token JWT no cabeçalho de autorização
 
@@ -104,7 +104,7 @@ void encerrarSessao() {
 
   doc.clear();
 
-  http.begin("http://192.168.0.126:8080/v1/sessoes/" + sessaoId + "/encerrar"); //Rota para encerrar sessão
+  http.begin("http://56.125.180.47:8080/v1/sessoes/" + sessaoId + "/encerrar"); //Rota para encerrar sessão
   http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
 
   http.addHeader("Authorization", "Bearer " + tokenJWT); //Adiciona o token JWT no cabeçalho de autorização
@@ -132,7 +132,7 @@ void enviarTemperatura() {
 
   doc.clear();
 
-  http.begin("http://192.168.0.126:8080/v1/temperaturas"); //Rota para enviar temperatura
+  http.begin("http://56.125.180.47:8080/v1/temperaturas"); //Rota para enviar temperatura
   http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
 
   http.addHeader("Authorization", "Bearer " + tokenJWT);
@@ -170,7 +170,7 @@ void enviarEvento(String tipo) {
 
   doc.clear();
 
-  http.begin("http://192.168.0.126:8080/v1/eventos"); //Rota para enviar evento
+  http.begin("http://56.125.180.47:8080/v1/eventos"); //Rota para enviar evento
   http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
 
   http.addHeader("Authorization", "Bearer " + tokenJWT);

@@ -16,6 +16,10 @@ void alertas() {
     Serial.println("Notificacao: Talvez voce tenha esquecido sua comida no forno!");
 
   }
+
+  if (dados.TEMP_EXT_ATUAL >= TEMP_EXT_MAXIMA) {
+    Serial.println("Notificacao: Temperatura externa atingiu 80ºC!");
+  }
 }
 
 void atualizarAlertas() {

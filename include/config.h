@@ -15,6 +15,8 @@
 
 #define BUZZER 15
 
+#define TERMOSTATO 4
+
 #define BLYNK_TEMPLATE_ID "TMPL2oYlTOGoQ"
 #define BLYNK_TEMPLATE_NAME "Monitoramento de Forno"
 #define BLYNK_AUTH_TOKEN "pzm-svahtHaKYCSybo0oVmMNX4uhM-qJ"
@@ -35,6 +37,7 @@ extern MAX6675 TERMOPAR;
 
 const float TEMP_CRITICA_ENTRADA = 300;
 const float TEMP_CRITICA_SAIDA = 290;
+const float TEMP_EXT_MAXIMA = 80;
 
 const float TEMP_ALERTA_ENTRADA = 250;
 const float TEMP_ALERTA_SAIDA = 240;

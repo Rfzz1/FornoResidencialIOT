@@ -31,12 +31,25 @@ void lerTemperatura() {
     Serial.printf("Temperatura Filtrada: %.2f °C (Bruta: %.2f °C)\n", dados.TEMP_ATUAL, leituraBruta);
 }
 
+void lerTemperaturaExterna() {
+    float tempExterna = digitalRead(TERMOSTATO);
+
+    if (tempExterna == HIGH) {
+        Serial.println("ATENCAO: Temperatura atingiu 80ºC!");
+        dados.TEMP_EXT_ATUAL >= TEMP_EXT_MAXIMA; // Atualiza a temperatura externa para indicar que atingiu 80ºC
+    } else {
+        Serial.println("Temperatura Externa: Baixa");
+        dados.TEMP_EXT_ATUAL < TEMP_EXT_MAXIMA; // Atualiza a temperatura externa para indicar que está abaixo de 80ºC
+    }
+}
+
 void atualizarSensores() {
 
   if (millis() - ultimaLeituraSensor >= 1000) {
 
     ultimaLeituraSensor = millis();
     lerTemperatura();
+    lerTemperaturaExterna();
   }
 
   if(millis() - ultimoEnvioTemperatura >= 5000) {
