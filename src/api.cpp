@@ -250,6 +250,7 @@ int enviarRequisicaoHTTP(
 
     if (codigo > 0) {
         respostaHttp = http.getString();
+        Serial.println("Resposta da API:");
         Serial.println(respostaHttp);
     } else {
         Serial.println(http.errorToString(codigo));
@@ -264,7 +265,7 @@ int enviarRequisicaoHTTP(
     // TOKEN INVÁLIDO
     // =========================
 
-    if (codigo == 401 || codigo == 403) {
+    if (codigo == 401) {
 
         Serial.println("Token expirado. Refazendo login...");
 
@@ -441,7 +442,7 @@ void enviarEvento(String tipo) {
 // ==========================
 
 void inicializarBluetooth() {
-    SerialBT.begin("MonitorForno");
+    SerialBT.begin("MonitorForno2");
     Serial.println("Bluetooth iniciado.");
 }
 
@@ -457,11 +458,15 @@ void inicializarPreferences() {
     serialNumber = preferences.getString("serialNumber", "");
     deviceSecret = preferences.getString("secret", "");
 
+    Serial.println("Secret salva:");
+    Serial.println(deviceSecret);
+
     if (serialNumber.isEmpty()) {
         serialNumber = WiFi.macAddress();
         serialNumber.replace(":", "");
         preferences.putString("serialNumber", serialNumber);
     }
+
 
     Serial.println("Serial: " + serialNumber);
 }
@@ -508,6 +513,13 @@ void processarBluetooth() {
         tempoInicioReinicio = millis();
         aguardandoReinicio = true;
     }
+
+    if (cmd == "CLEAR_SECRET") {
+        preferences.remove("secret");
+        SerialBT.println("SECRET_REMOVIDO");
+        delay(1000);
+        ESP.restart();
+    }
 }
 
 // ==========================
@@ -536,8 +548,9 @@ void verificarEstadoDispositivo() {
 
 void gerenciarEstadoOperacional() {
 
+    processarBluetooth();
+
     if (!dados.espConfigurado) {
-        processarBluetooth();
         return;
     }
 

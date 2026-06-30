@@ -6,8 +6,8 @@
 #include <time.h>
 #include "telemetria.h"
 
-char ssid[] = "FamiliaFeliz-2.4ghz";
-char pass[] = "S3msgums";
+char ssid[] = "SENAI-TurmaTI";
+char pass[] = "SenaiGaribaldiCeit";
 static unsigned long milisAtualizarHoraLocal = 0;
 static unsigned long milisAtualizarHorarioAlarme = 0;
 static unsigned long milisEstabilizarWiFi = 0;

@@ -14,6 +14,15 @@
 
     inicializarBluetooth();
 
+    Serial.println("Aguardando comandos Bluetooth por 10 segundos...");
+
+    unsigned long inicio = millis();
+
+    while (millis() - inicio < 10000) {
+        processarBluetooth();
+        delay(10);
+    }
+
     inicializarPreferences();
     verificarEstadoDispositivo();
 
