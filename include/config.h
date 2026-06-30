@@ -17,10 +17,6 @@
 
 #define TERMOSTATO 4
 
-#define BLYNK_TEMPLATE_ID "TMPL2oYlTOGoQ"
-#define BLYNK_TEMPLATE_NAME "Monitoramento de Forno"
-#define BLYNK_AUTH_TOKEN "pzm-svahtHaKYCSybo0oVmMNX4uhM-qJ"
-
 #include <Arduino.h>
 #include <math.h>
 #include <MAX6675.h>
@@ -34,7 +30,7 @@ extern MAX6675 TERMOPAR;
 // =====================================================
 // CONSTANTES
 // =====================================================
-
+constexpr const char* API_BASE_URL = "http://56.125.180.47:8080";
 const float TEMP_CRITICA_ENTRADA = 300;
 const float TEMP_CRITICA_SAIDA = 290;
 const float TEMP_EXT_MAXIMA = 80;

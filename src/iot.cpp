@@ -1,28 +1,23 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include "config.h"
-#include <BlynkSimpleEsp32.h>
 #include "iot.h"
 #include "logs.h"
 #include <time.h>
 #include "telemetria.h"
 
-char ssid[] = "SENAI-TurmaTI";
-char pass[] = "SenaiGaribaldiCeit";
+char ssid[] = "FamiliaFeliz-2.4ghz";
+char pass[] = "S3msgums";
 static unsigned long milisAtualizarHoraLocal = 0;
 static unsigned long milisAtualizarHorarioAlarme = 0;
-static unsigned long ultimoEnvioBlynk = 0;
 static unsigned long milisEstabilizarWiFi = 0;
 static unsigned long tentativaNTP = 0;
-static unsigned long ultimaTentativaBlynk = 0;
-
-void iniciarBlynk() {
-    Blynk.config(BLYNK_AUTH_TOKEN);
-    Blynk.connect();
-}
+unsigned long ultimoTesteWiFi = 0;
 
 void conectarWiFi() {
     WiFi.begin(ssid, pass);
+
+    Serial.println("Conectando...");
 
     while (WiFi.status() != WL_CONNECTED) {
         if (millis() - milisEstabilizarWiFi >= 1000) {
@@ -32,31 +27,48 @@ void conectarWiFi() {
     }
     Serial.println("\nWiFi conectado.");
 
+    Serial.print("Status: ");
+    Serial.println(WiFi.status());
+
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
+
+    Serial.print("Gateway: ");
+    Serial.println(WiFi.gatewayIP());
+
+    Serial.print("DNS: ");
+    Serial.println(WiFi.dnsIP());
+
     configurarNTP();
     printLocalTime();
 }
 
-void conectarBlynk() {
-    if (WiFi.status() == WL_CONNECTED) {
+void verificarWiFi() {
 
-        if (!Blynk.connected()) {
-            if(millis() - ultimaTentativaBlynk >= 15000) {
-                ultimaTentativaBlynk = millis();
-                Serial.println("Tentando reconectar ao Blynk de forma assíncrona...");
-                Blynk.connect(100);
-            }
-        } else {
-            Blynk.run();
-        }
-        
-    } else {
-        Serial.println("WiFi desconectado. Tentando reconectar...");
-        conectarWiFi();
-    }
+    if (millis() - ultimoTesteWiFi < 5000)
+        return;
+
+    ultimoTesteWiFi = millis();
+
+    if (WiFi.status() == WL_CONNECTED)
+        return;
+
+    Serial.println("Reconectando...");
+
+    WiFi.disconnect();
+
+    WiFi.begin(ssid, pass);
+
 }
 
 void configurarNTP() {
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    configTime(
+    -10800,
+    0,
+    "time.google.com",
+    "time.cloudflare.com",
+    "pool.ntp.org"
+);
 }
 
 void estabilizarHoraLocal() {
@@ -71,7 +83,7 @@ void estabilizarHoraLocal() {
     if (millis() - tentativaNTP >= 1000) {
         tentativaNTP = millis();
     
-        if (getLocalTime(&timeinfo)) {
+        if (getLocalTime(&timeinfo, 10000)) {
 
             dados.horaSincronizada = true;
             Serial.println("Hora local sincronizada.");
@@ -122,32 +134,6 @@ String obterHorarioFormatado() {
     return String(buffer);
 }
 
-void enviarBlynk() {
-    Blynk.virtualWrite(V0, dados.TEMP_ATUAL);
-    Blynk.virtualWrite(V1, obterEstadoFornoTexto());
-    Blynk.virtualWrite(V2, obterEstadoSistemaTexto(dados.estadoAtual));
-    Blynk.virtualWrite(V3, dados.tempoLigadoMinutos);
-}
-
-
-BLYNK_WRITE(V5) {
-    TimeInputParam t(param);
-
-    if (t.hasStartTime()) {
-        dados.HoraInicio = t.getStartHour();
-        dados.MinutoInicio = t.getStartMinute();
-        dados.HoraFim = t.getStopHour();
-        dados.MinutoFim = t.getStopMinute();
-        dados.HorarioInicio = dados.HoraInicio * 60 + dados.MinutoInicio;
-        dados.HorarioFim = dados.HoraFim * 60 + dados.MinutoFim;
-
-        dados.TempoAlarme = dados.HorarioFim - dados.HorarioInicio;
-        if (dados.TempoAlarme < 0) {
-            dados.TempoAlarme += 24 * 60;
-        }
-    }
-}
-
 void verificarHorarioAlarme() {
     if (dados.HoraAtual == dados.HoraFim && dados.MinutoAtual == dados.MinutoFim) {
             dados.buzzerAtivaHorario = true;
@@ -160,12 +146,5 @@ void atualizarHorarioAlarme() {
     if (millis() - milisAtualizarHorarioAlarme >= 1000) {
         milisAtualizarHorarioAlarme = millis();
         verificarHorarioAlarme();
-    }
-}
-
-void atualizarEnvioBlynk() {
-    if (millis() - ultimoEnvioBlynk >= 1000) {
-        ultimoEnvioBlynk = millis();
-        enviarBlynk();
     }
 }

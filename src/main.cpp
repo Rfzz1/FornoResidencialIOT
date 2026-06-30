@@ -11,11 +11,13 @@
   void setup() {
 
     Serial.begin(115200);
+
+    inicializarBluetooth();
+
+    inicializarPreferences();
     verificarEstadoDispositivo();
 
-    dados.inicioTentativa = millis();
-
-    iniciarBlynk();  
+    dados.inicioTentativa = millis(); 
 
     pinMode(RED, OUTPUT);
     pinMode(GREEN, OUTPUT);
@@ -30,11 +32,14 @@
 
   void loop() {
 
-    estabilizarHoraLocal();
-    conectarBlynk();
-
     verificarReiniciar();
     gerenciarEstadoOperacional();
+
+    if (dados.espConfigurado &&
+        WiFi.status() == WL_CONNECTED) {
+
+        estabilizarHoraLocal();
+    }
 
     atualizarLEDs();
     atualizarBuzzer();

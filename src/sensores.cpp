@@ -9,37 +9,69 @@ static unsigned long ultimaLeituraSensor = 0;
 static unsigned long ultimoEnvioTemperatura = 0;
 static float leituraBruta = 0;
 
+const int TAM_MEDIA = 10;
+
+float bufferTemperaturas[TAM_MEDIA];
+
+int indiceBuffer = 0;
+
+bool bufferCheio = false;
+
 MAX6675 TERMOPAR(TERMOPAR_SCK, TERMOPAR_CS, TERMOPAR_SO);
 
 void lerTemperatura() {
 
-    dados.ULTIMA_TEMP = dados.TEMP_ATUAL;
-    
     leituraBruta = TERMOPAR.readCelsius();
 
-    if(dados.TEMP_ATUAL == 0) {
-      dados.TEMP_ATUAL = leituraBruta;
-      return;
+    if (isnan(leituraBruta))
+        return;
+
+    dados.ULTIMA_TEMP = dados.TEMP_ATUAL;
+
+    bufferTemperaturas[indiceBuffer] = leituraBruta;
+
+    indiceBuffer++;
+
+    if (indiceBuffer >= TAM_MEDIA) {
+
+        indiceBuffer = 0;
+        bufferCheio = true;
+
     }
 
-    if(!isnan(leituraBruta)) {
-        dados.TEMP_ATUAL = (dados.TEMP_ATUAL * 0.7) + (leituraBruta * 0.3);
-    } else {
-        dados.TEMP_ATUAL = leituraBruta;
+    int quantidade =
+        bufferCheio ?
+        TAM_MEDIA :
+        indiceBuffer;
+
+    float soma = 0;
+
+    for (int i = 0; i < quantidade; i++) {
+
+        soma += bufferTemperaturas[i];
+
     }
 
-    Serial.printf("Temperatura Filtrada: %.2f °C (Bruta: %.2f °C)\n", dados.TEMP_ATUAL, leituraBruta);
+    dados.TEMP_ATUAL = soma / quantidade;
+
+    Serial.printf(
+        "Temperatura: %.2f°C\n",
+        dados.TEMP_ATUAL
+    );
 }
 
 void lerTemperaturaExterna() {
-    float tempExterna = digitalRead(TERMOSTATO);
 
-    if (tempExterna == HIGH) {
-        Serial.println("ATENCAO: Temperatura atingiu 80ºC!");
-        dados.TEMP_EXT_ATUAL >= TEMP_EXT_MAXIMA; // Atualiza a temperatura externa para indicar que atingiu 80ºC
+    bool quente = digitalRead(TERMOSTATO);
+
+    if (quente) {
+
+        dados.TEMP_EXT_ATUAL = TEMP_EXT_MAXIMA;
+
     } else {
-        Serial.println("Temperatura Externa: Baixa");
-        dados.TEMP_EXT_ATUAL < TEMP_EXT_MAXIMA; // Atualiza a temperatura externa para indicar que está abaixo de 80ºC
+
+        dados.TEMP_EXT_ATUAL = 0;
+
     }
 }
 

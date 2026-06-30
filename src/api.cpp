@@ -2,7 +2,9 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
+#include <WiFi.h>
 #include "BluetoothSerial.h"
+
 #include "config.h"
 #include "telemetria.h"
 #include "iot.h"
@@ -12,6 +14,11 @@
 #include "logs.h"
 #include "eventos.h"
 #include "sensores.h"
+#include "api.h"
+
+// ==========================
+// OBJETOS GLOBAIS
+// ==========================
 
 BluetoothSerial SerialBT;
 Preferences preferences;
@@ -20,279 +27,519 @@ String tokenJWT = "";
 String sessaoId = "";
 String serialNumber;
 String deviceSecret;
+
 String body;
-double temperaturaAtual;
-double temperaturaUltima;
-JsonDocument doc;
-HTTPClient http; //Inicializa o cliente HTTP
+double temperaturaAtual = 0;
+double temperaturaUltima = 0;
 
 static bool aguardandoReinicio = false;
 static unsigned long tempoInicioReinicio = 0;
 
-void fazerLogin() {
+// controle de recuperação de sessão
+static bool tentandoRecuperarSessao = false;
+static int tentativasSessao = 0;
 
-  doc.clear();
-  
-  http.begin("http://56.125.180.47:8080/v1/fornos/auth"); //Rota de login da API
-  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
 
-  doc["serialNumber"] = serialNumber; //Adiciona o número de série ao documento JSON
-  doc["secret"] = deviceSecret; //Adiciona o segredo do dispositivo ao documento JSON
+void diagnosticoCompleto() {
 
-  body = "";
-  serializeJson(doc, body); //Serializa o documento JSON para uma string
-
-  int httpResponseCode = http.POST(body); //Envia a requisição POST para a API
-
-  // Verifica a resposta da API (código de status HTTP)
-  if (httpResponseCode == 200) {
-    String response = http.getString(); //Obtém a resposta da API como string
-    deserializeJson(doc, response); //Deserializa a resposta JSON para o documento
-    tokenJWT = doc["token"].as<String>(); //Extrai o token JWT da resposta e armazena na variável global
-    Serial.println("Login bem-sucedido. Token JWT recebido."); 
-  } else {
-    Serial.print("Erro no login: ");
-    Serial.println(httpResponseCode);
-  }
-
-  http.end();
-}
-
-void iniciarSessao() {
-
-  
-  if(tokenJWT.isEmpty()){
-    Serial.println("Usuário não autenticado");
-    return;
-  }
-
-  doc.clear();
-
-  http.begin("http://56.125.180.47:8080/v1/sessoes/iniciar"); //Rota de início de sessão da API
-  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
-  http.addHeader("Authorization", "Bearer " + tokenJWT); //Adiciona o token JWT no cabeçalho de autorização
-
-  body = "";
-  int httpResponseCode = http.POST(body); //Envia a requisição POST para a API
-
-  if (httpResponseCode == 201) {
-    String response = http.getString(); //Obtém a resposta da API como string
-    deserializeJson(doc, response); //Deserializa a resposta JSON para o documento
-    sessaoId = doc["id"].as<String>(); //Extrai o ID da sessão da resposta e armazena na variável global
-    Serial.println("Sessão iniciada com sucesso.");
-  } else {
-    Serial.print("Erro ao iniciar sessão: ");
-    Serial.println(httpResponseCode);
-
-    if (httpResponseCode == 401 || httpResponseCode == 403) {
-      tokenJWT = "";
-      Serial.println("Token expirado ou inválido. Forçando novo login...");
+    Serial.printf("Heap livre: %d bytes\n", ESP.getFreeHeap());
+ 
+    Serial.println("\n===== INICIANDO DIAGNOSTICO =====");
+ 
+    // ---------- TESTE 1: DNS ----------
+    Serial.println("\n[TESTE 1] Resolvendo DNS...");
+    IPAddress resolvedIP;
+    if (WiFi.hostByName("monitoramentoforno.com.br", resolvedIP)) {
+        Serial.print("OK - IP resolvido: ");
+        Serial.println(resolvedIP);
+    } else {
+        Serial.println("FALHA - DNS nao resolveu o dominio");
     }
-  }
-
-  http.end();
-
+ 
+    // ---------- TESTE 2: HTTP puro (porta 80) ----------
+    Serial.println("\n[TESTE 2] HTTP puro na porta 80...");
+    {
+        HTTPClient http;
+        WiFiClient client;
+        http.begin(client, "http://monitoramentoforno.com.br/v1/fornos/auth");
+        http.addHeader("Content-Type", "application/json");
+        int code = http.POST("{}");
+        Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
+        if (code > 0) {
+            Serial.println("Resposta do servidor: " + http.getString());
+        }
+        http.end();
+    }
+ 
+    delay(1000);
+ 
+    // ---------- TESTE 3: HTTPS com setInsecure (porta 443) ----------
+    Serial.println("\n[TESTE 3] HTTPS com setInsecure() na porta 443...");
+    {
+        HTTPClient http;
+        WiFiClientSecure client;
+        client.setInsecure();
+        http.begin(client, "https://monitoramentoforno.com.br/v1/fornos/auth");
+        http.addHeader("Content-Type", "application/json");
+        int code = http.POST("{}");
+        Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
+        if (code > 0) {
+            Serial.println("Resposta do servidor: " + http.getString());
+        }
+        http.end();
+    }
+ 
+    delay(1000);
+ 
+    // ---------- TESTE 4: HTTPS direto no IP (porta 443), sem domínio ----------
+    Serial.println("\n[TESTE 4] HTTPS direto no IP 56.125.180.47...");
+    {
+        HTTPClient http;
+        WiFiClientSecure client;
+        client.setInsecure();
+        http.begin(client, "https://56.125.180.47/v1/fornos/auth");
+        http.addHeader("Content-Type", "application/json");
+        http.addHeader("Host", "monitoramentoforno.com.br"); // necessário para SNI/virtual host
+        int code = http.POST("{}");
+        Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
+        if (code > 0) {
+            Serial.println("Resposta do servidor: " + http.getString());
+        }
+        http.end();
+    }
+ 
+    delay(1000);
+ 
+    // ---------- TESTE 5: site externo conhecido (controle - testa se HTTPS funciona em geral) ----------
+    Serial.println("\n[TESTE 5] HTTPS para site externo (google.com) - teste de controle...");
+    {
+        HTTPClient http;
+        WiFiClientSecure client;
+        client.setInsecure();
+        http.begin(client, "https://www.google.com");
+        int code = http.GET();
+        Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
+        http.end();
+    }
+ 
+    Serial.println("\n===== FIM DO DIAGNOSTICO =====\n");
 }
+
+// ==========================
+// LOGIN
+// ==========================
+
+void fazerLogin() {
+    JsonDocument doc;
+    HTTPClient http;
+    WiFiClient client;
+
+    IPAddress resolvedIP;
+    if (WiFi.hostByName("monitoramentoforno.com.br", resolvedIP)) {
+        Serial.print("IP resolvido: ");
+        Serial.println(resolvedIP);
+    } else {
+        Serial.println("Falha ao resolver DNS!");
+    }
+    
+    http.begin(client, String(API_BASE_URL) + "/v1/fornos/auth"); 
+    http.addHeader("Content-Type", "application/json");
+
+    // Limpeza da secret (aqui está o corte dos 36 caracteres para garantir)
+    String secretLimpa = deviceSecret;
+    secretLimpa.trim(); 
+    if (secretLimpa.length() > 36) {
+        secretLimpa = secretLimpa.substring(0, 36);
+    }
+    doc["secret"] = secretLimpa;
+    doc["serialNumber"] = serialNumber;
+
+    String jsonOutput;
+    serializeJson(doc, jsonOutput);
+
+    Serial.println("Enviando JSON: " + jsonOutput);
+
+    int code = http.POST(jsonOutput);
+
+    if (code == 200) {
+        String payload = http.getString();
+        JsonDocument res;
+        deserializeJson(res, payload);
+        tokenJWT = res["token"].as<String>(); // Certifique-se de salvar o token!
+        Serial.println("Login com sucesso!");
+    } else {
+        Serial.printf("DEBUG ERRO HTTP: codigo=%d mensagem=%s\n", code, http.errorToString(code).c_str());
+    }
+
+    http.end();
+}
+
+void salvarSecretBluetooth(String recebidoDoTerminal) {
+    String secretLimpa = "";
+    for (char c : recebidoDoTerminal) {
+        if (isAlphaNumeric(c) || c == '-') { 
+            secretLimpa += c;
+        }
+    }
+    // Salva a versão limpa nas Preferences
+    preferences.putString("secret", secretLimpa); 
+    deviceSecret = secretLimpa;
+    Serial.println("Nova secret salva com sucesso!");
+}
+
+// ==========================
+// GARANTIA LOGIN
+// ==========================
+
+bool garantirLogin() {
+
+    if (!tokenJWT.isEmpty())
+        return true;
+
+    fazerLogin();
+
+    return !tokenJWT.isEmpty();
+}
+
+// ==========================
+// REQUEST CENTRAL
+// ==========================
+
+int enviarRequisicaoHTTP(
+    const String &url,
+    const String &metodo,
+    const String &payload,
+    String *response
+) {
+
+    HTTPClient http;
+
+    if (url.startsWith("https://")) {
+
+    WiFiClientSecure client;
+    client.setInsecure();
+
+    http.begin(client, url);
+
+    } else {
+
+        WiFiClient client;
+
+        http.begin(client, url);
+    }
+
+    if (!garantirLogin())
+        return -1;
+
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("Authorization", "Bearer " + tokenJWT);
+
+    int codigo;
+    
+    if (metodo == "POST") codigo = http.POST(payload);
+    else if (metodo == "PUT") codigo = http.PUT(payload);
+    else if (metodo == "GET") codigo = http.GET();
+    else {
+        http.end();
+        return -2;
+    }
+
+    Serial.printf("HTTP retornou: %d\n", codigo);
+
+    String respostaHttp;
+
+    if (codigo > 0) {
+        respostaHttp = http.getString();
+        Serial.println(respostaHttp);
+    } else {
+        Serial.println(http.errorToString(codigo));
+    }
+
+    if (response != nullptr) {
+        *response = respostaHttp;
+    }
+    http.end();
+
+    // =========================
+    // TOKEN INVÁLIDO
+    // =========================
+
+    if (codigo == 401 || codigo == 403) {
+
+        Serial.println("Token expirado. Refazendo login...");
+
+        tokenJWT = "";
+
+        if (!garantirLogin())
+            return codigo;
+
+        return enviarRequisicaoHTTP(url, metodo, payload, response);
+    }
+
+    // =========================
+    // SESSÃO INVÁLIDA
+    // =========================
+
+    if (codigo == 404) {
+
+        if (tentativasSessao >= 3) {
+            Serial.println("Falha crítica na sessão.");
+            return codigo;
+        }
+
+        if (!tentandoRecuperarSessao) {
+
+            tentandoRecuperarSessao = true;
+            tentativasSessao++;
+
+            Serial.println("Recriando sessão...");
+
+            sessaoId = "";
+
+            if (iniciarSessao()) {
+                tentandoRecuperarSessao = false;
+                return enviarRequisicaoHTTP(url, metodo, payload, response);
+            }
+
+            tentandoRecuperarSessao = false;
+        }
+    }
+
+    return codigo;
+}
+
+// ==========================
+// SESSÃO
+// ==========================
+
+bool iniciarSessao() {
+
+    if (!sessaoId.isEmpty())
+        return true;
+
+    String resposta;
+
+    Serial.println("Token:");
+    Serial.println(tokenJWT);
+
+    int code = enviarRequisicaoHTTP(
+        String(API_BASE_URL) + "/v1/sessoes/iniciar",
+        "POST",
+        "",
+        &resposta
+    );
+
+if (code == 201) {
+
+    JsonDocument doc;
+
+    DeserializationError erro = deserializeJson(doc, resposta);
+
+    if (erro) {
+        Serial.println(erro.c_str());
+        return false;
+    }
+
+    sessaoId = doc["id"].as<String>();
+
+    Serial.println("Sessão criada:");
+    Serial.println(sessaoId);
+
+    return true;
+}
+
+Serial.println("Falha ao criar sessão");
+return false;
+}
+
+// ==========================
+// ENCERRAR SESSÃO
+// ==========================
 
 void encerrarSessao() {
 
-  
-  if(tokenJWT.isEmpty()){
-    Serial.println("Usuário não autenticado");
-    return;
-  }
+    int code = enviarRequisicaoHTTP(
+        String(API_BASE_URL) + "/v1/sessoes/" + sessaoId + "/encerrar",
+        "PUT",
+        body,
+        nullptr
+    );
 
-  doc.clear();
-
-  http.begin("http://56.125.180.47:8080/v1/sessoes/" + sessaoId + "/encerrar"); //Rota para encerrar sessão
-  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
-
-  http.addHeader("Authorization", "Bearer " + tokenJWT); //Adiciona o token JWT no cabeçalho de autorização
-
-  body = "";
-  int httpResponseCode = http.PUT(body); //Envia a requisição PUT para a API
-
-  if (httpResponseCode == 200) {
-    Serial.println("Sessão encerrada com sucesso.");
-  } else {
-    Serial.print("Erro ao encerrar sessão: ");
-    Serial.println(httpResponseCode);
-  }
-
-  http.end();
+    Serial.printf("Encerrar sessão: %d\n", code);
 }
+
+// ==========================
+// TEMPERATURA
+// ==========================
 
 void enviarTemperatura() {
 
-  
-  if(tokenJWT.isEmpty()){
-    Serial.println("Usuário não autenticado");
+    JsonDocument doc;
+
+    Serial.print("Sessao: ");
+    Serial.println(sessaoId);
+
+    if (!iniciarSessao()) {
+    Serial.println("Nao foi possivel iniciar a sessao.");
     return;
-  }
-
-  doc.clear();
-
-  http.begin("http://56.125.180.47:8080/v1/temperaturas"); //Rota para enviar temperatura
-  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
-
-  http.addHeader("Authorization", "Bearer " + tokenJWT);
-
-  doc["sessaoId"] = sessaoId; //Adiciona o ID da sessão ao documento JSON
-  doc["temperaturaAtual"] = temperaturaAtual; //Adiciona a temperatura atual ao documento JSON
-  doc["temperaturaUltima"] = temperaturaUltima; //Adiciona a última temperatura ao documento JSON
-
-  body = "";
-  serializeJson(doc, body); //Serializa o documento JSON para uma string
-  int httpResponseCode = http.POST(body); //Envia a requisição POST para a API
-
-  if (httpResponseCode == 201) {
-    Serial.println("Temperatura enviada com sucesso.");
-  } else {
-    Serial.print("Erro ao enviar temperatura: ");
-    Serial.println(httpResponseCode);
-
-    if (httpResponseCode == 401 || httpResponseCode == 403) {
-      tokenJWT = "";  
-      Serial.println("Token expirado ou inválido. Forçando novo login...");
-    }
-  }
-
-  http.end();
 }
+
+Serial.print("Token: ");
+Serial.println(tokenJWT.length());
+
+Serial.print("Sessao: ");
+Serial.println(sessaoId);
+
+    doc["sessaoId"] = sessaoId;
+    doc["temperaturaAtual"] = dados.TEMP_ATUAL;
+    doc["temperaturaUltima"] = dados.ULTIMA_TEMP;
+    doc["temperaturaExterna"] = dados.TEMP_EXT_ATUAL;
+
+    serializeJson(doc, body);
+
+    String resposta;
+
+    int code = enviarRequisicaoHTTP(
+        String(API_BASE_URL) + "/v1/temperaturas",
+        "POST",
+        body,
+        &resposta
+    );
+
+    Serial.printf("Código: %d\n", code);
+    Serial.println("Resposta:");
+    Serial.println(resposta);
+
+    Serial.printf("Envio temperatura: %d\n", code);
+}
+
+// ==========================
+// EVENTOS
+// ==========================
 
 void enviarEvento(String tipo) {
 
-  
-  if(tokenJWT.isEmpty()){
-    Serial.println("Usuário não autenticado");
-    return;
-  }
+    JsonDocument doc;
 
-  doc.clear();
+    doc["sessaoId"] = sessaoId;
+    doc["tipo"] = tipo;
 
-  http.begin("http://56.125.180.47:8080/v1/eventos"); //Rota para enviar evento
-  http.addHeader("Content-Type", "application/json"); //Define o tipo de conteúdo como JSON
+    serializeJson(doc, body);
 
-  http.addHeader("Authorization", "Bearer " + tokenJWT);
+    int code = enviarRequisicaoHTTP(
+        String(API_BASE_URL) + "/v1/eventos",
+        "POST",
+        body,
+        nullptr
+    );
 
-  doc["sessaoId"] = sessaoId; //Adiciona o ID da sessão ao documento JSON
-  doc["tipo"] = tipo; //Adiciona o tipo de evento ao documento JSON
+    Serial.printf("Evento: %d\n", code);
+}
 
-  body = "";
-  serializeJson(doc, body); //Serializa o documento JSON para uma string
-  int httpResponseCode = http.POST(body); //Envia a requisição POST para a API
+// ==========================
+// BLUETOOTH
+// ==========================
 
-  if (httpResponseCode == 201) {
-    Serial.println("Evento enviado com sucesso.");
-  } else {
-    Serial.print("Erro ao enviar evento: ");
-    Serial.println(httpResponseCode);
-
-    if (httpResponseCode == 401 || httpResponseCode == 403) {
-        tokenJWT = "";
-        Serial.println("Token expirado ou inválido. Forçando novo login...");
-    }
-
-  }
-
-  http.end();
-
+void inicializarBluetooth() {
+    SerialBT.begin("MonitorForno");
+    Serial.println("Bluetooth iniciado.");
 }
 
 void inicializarPreferences() {
+
+    Serial.println("Abrindo Preferences...");
+
     if (!preferences.begin("forno", false)) {
         Serial.println("Falha ao iniciar Preferences");
         return;
     }
 
-    serialNumber = preferences.getString("serialNumber", ""); //Tenta carregar o número de série salvo, se não existir, retorna uma string vazia
-    deviceSecret = preferences.getString("secret", ""); //Tenta carregar o segredo do dispositivo salvo, se não existir, retorna uma string vazia
+    serialNumber = preferences.getString("serialNumber", "");
+    deviceSecret = preferences.getString("secret", "");
 
-    //Se o número de série não existir, gera um novo a partir do MAC address do WiFi, remove os ":" e salva nas Preferences
     if (serialNumber.isEmpty()) {
         serialNumber = WiFi.macAddress();
         serialNumber.replace(":", "");
         preferences.putString("serialNumber", serialNumber);
-        Serial.println("Número de série gerado e armazenado: " + serialNumber);
     }
 
-    Serial.println("Serial carregado: " + serialNumber);
-
-    Serial.println("Secret carregado: " + deviceSecret);
+    Serial.println("Serial: " + serialNumber);
 }
 
+// ==========================
+// BLUETOOTH PROCESS
+// ==========================
+
 void processarBluetooth() {
-      if(!SerialBT.available()) {
+
+    static bool conectado = false;
+
+    if (SerialBT.hasClient() && !conectado) {
+        conectado = true;
+        Serial.println("Bluetooth conectado");
+    }
+
+    if (!SerialBT.hasClient()) {
+        conectado = false;
         return;
     }
 
-    String comando =
-        SerialBT.readStringUntil('\n');
+    if (!SerialBT.available())
+        return;
 
-    comando.trim();
+    String cmd = SerialBT.readStringUntil('\n');
+    cmd.trim();
 
-    if(comando == "GET_SERIAL") {
+    if (cmd == "GET_SERIAL") {
 
-        String serial =
-            WiFi.macAddress();
-
-        serial.replace(":", "");
-
-        SerialBT.println(serial);
-
+        String s = WiFi.macAddress();
+        s.replace(":", "");
+        SerialBT.println(s);
         return;
     }
 
-    if(comando.startsWith("SET_SECRET:")) {
+    if (cmd.startsWith("SET_SECRET:")) {
 
-        String secret =
-            comando.substring(11);
-
-        deviceSecret = secret;
-        dados.espConfigurado = true;
-
-        preferences.putString(
-            "secret",
-            deviceSecret
-        );
+        deviceSecret = cmd.substring(11);
+        preferences.putString("secret", deviceSecret);
 
         SerialBT.println("OK");
-        Serial.println("Configuração recebida. Reiniciando em 2 segundos...");
 
         tempoInicioReinicio = millis();
         aguardandoReinicio = true;
-        return;
     }
 }
 
+// ==========================
+// CONTROLE
+// ==========================
+
 void verificarReiniciar() {
-    if (aguardandoReinicio && (millis() - tempoInicioReinicio >= 2000)) {
+    if (aguardandoReinicio &&
+        millis() - tempoInicioReinicio >= 2000) {
         ESP.restart();
     }
 }
 
 void verificarEstadoDispositivo() {
-    
-    String secretSalvo = preferences.getString("secret", "");
 
-    if (secretSalvo.isEmpty()) {
-      dados.espConfigurado = false;
-      Serial.println("Dispositivo não configurado. Aguardando configuração via Bluetooth...");
+    if (preferences.getString("secret", "").isEmpty()) {
+        dados.espConfigurado = false;
+        Serial.println("Aguardando configuração Bluetooth...");
     } else {
-        Serial.println("Dispositivo configurado. Pronto para uso.");
         dados.espConfigurado = true;
         conectarWiFi();
+        diagnosticoCompleto();
         fazerLogin();
     }
-
 }
 
 void gerenciarEstadoOperacional() {
-  if (!dados.espConfigurado) {
-    processarBluetooth();
-    //Adicionar um led piscando para indicar que o dispositivo está aguardando configuração
-    return;
-  } else {
+
+    if (!dados.espConfigurado) {
+        processarBluetooth();
+        return;
+    }
 
     if (tokenJWT.isEmpty() && WiFi.status() == WL_CONNECTED) {
         fazerLogin();
@@ -301,15 +548,20 @@ void gerenciarEstadoOperacional() {
     atualizarSensores();
     atualizarEstadoSistema();
     atualizarEstadoForno();
+
     processarEventos();
     processarFilaEventos();
+
     tratarSessao();
+
     atualizarAlertas();
     atualizarHorarioAlarme();
     atualizarEnvioLogs();
-    atualizarEnvioBlynk();
-  }
 }
+
+// ==========================
+// TEMPERATURAS
+// ==========================
 
 void sincronizarTemperaturas() {
     temperaturaAtual = dados.TEMP_ATUAL;
@@ -317,6 +569,10 @@ void sincronizarTemperaturas() {
     enviarTemperatura();
 }
 
+// ==========================
+// SERIAL
+// ==========================
+
 String obterSerialNumber() {
-  return serialNumber;
+    return serialNumber;
 }

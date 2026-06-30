@@ -10,6 +10,10 @@ static uint32_t ultimoSegundoExibido = 0;
 
 void tratarSessao() {
 
+  if (dados.estadoFornoAtual == FORNO_DESLIGADO) {
+    return;
+}
+
   if (dados.estadoFornoAtual != FORNO_DESLIGADO &&
       dados.estadoFornoAnterior == FORNO_DESLIGADO) {
 
