@@ -12,6 +12,8 @@
 
     Serial.begin(115200);
 
+    Serial.println("FIRMWARE V2");
+
     inicializarBluetooth();
 
     Serial.println("Aguardando comandos Bluetooth por 10 segundos...");
@@ -40,6 +42,15 @@
   }
 
   void loop() {
+
+    static unsigned long ultimoLoop = 0;
+
+    if (millis() - ultimoLoop >= 1000) {
+
+        ultimoLoop = millis();
+
+        Serial.println("LOOP VIVO");
+    }
 
     verificarReiniciar();
     gerenciarEstadoOperacional();

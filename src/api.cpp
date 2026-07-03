@@ -92,12 +92,12 @@ void diagnosticoCompleto() {
     delay(1000);
  
     // ---------- TESTE 4: HTTPS direto no IP (porta 443), sem domínio ----------
-    Serial.println("\n[TESTE 4] HTTPS direto no IP 56.125.180.47...");
+    Serial.println("\n[TESTE 4] HTTPS direto no IP 54.207.91.135...");
     {
         HTTPClient http;
         WiFiClientSecure client;
         client.setInsecure();
-        http.begin(client, "https://56.125.180.47/v1/fornos/auth");
+        http.begin(client, "https://54.207.91.135/v1/fornos/auth");
         http.addHeader("Content-Type", "application/json");
         http.addHeader("Host", "monitoramentoforno.com.br"); // necessário para SNI/virtual host
         int code = http.POST("{}");
@@ -193,10 +193,21 @@ void salvarSecretBluetooth(String recebidoDoTerminal) {
 
 bool garantirLogin() {
 
-    if (!tokenJWT.isEmpty())
+    Serial.println("GL 1");
+
+    if (!tokenJWT.isEmpty()) {
+        Serial.println("GL 2");
         return true;
+    }
+
+    Serial.println("GL 3");
 
     fazerLogin();
+
+    Serial.println("GL 4");
+
+    Serial.print("Token tamanho: ");
+    Serial.println(tokenJWT.length());
 
     return !tokenJWT.isEmpty();
 }
@@ -212,29 +223,58 @@ int enviarRequisicaoHTTP(
     String *response
 ) {
 
+    WiFiClient client;
+    WiFiClientSecure secureClient;
+
     HTTPClient http;
 
+    Serial.print("URL: ");
+    Serial.println(url);
+
     if (url.startsWith("https://")) {
-
-    WiFiClientSecure client;
-    client.setInsecure();
-
-    http.begin(client, url);
-
+        Serial.println("HTTPS");
+        secureClient.setInsecure();
+        http.begin(secureClient, url);
     } else {
-
-        WiFiClient client;
-
+        Serial.println("HTTP");
         http.begin(client, url);
     }
 
-    if (!garantirLogin())
+    http.setTimeout(5000);     // espera no máximo 5 segundos
+    http.setReuse(false);       // fecha a conexão após cada requisição
+
+    Serial.println("BEGIN OK");
+
+    Serial.print("Token tamanho: ");
+    Serial.println(tokenJWT.length());
+
+    Serial.println("3");
+
+    bool ok = garantirLogin();
+
+    Serial.print("garantirLogin = ");
+    Serial.println(ok);
+
+    if (!ok) {
+        Serial.println("SAIU -1");
+        http.end();
         return -1;
+    }
+
+    Serial.println("ADD HEADER");
 
     http.addHeader("Content-Type", "application/json");
     http.addHeader("Authorization", "Bearer " + tokenJWT);
 
     int codigo;
+
+    Serial.println("4");
+
+    Serial.print("Payload: ");
+    Serial.println(payload);
+
+    Serial.print("Metodo: ");
+    Serial.println(metodo);
     
     if (metodo == "POST") codigo = http.POST(payload);
     else if (metodo == "PUT") codigo = http.PUT(payload);
@@ -248,11 +288,19 @@ int enviarRequisicaoHTTP(
 
     String respostaHttp;
 
+    Serial.println("5");
+
     if (codigo > 0) {
+
+        Serial.println("6");
+
         respostaHttp = http.getString();
         Serial.println("Resposta da API:");
         Serial.println(respostaHttp);
+
+        Serial.println("7");
     } else {
+        Serial.println("8");
         Serial.println(http.errorToString(codigo));
     }
 
@@ -260,6 +308,7 @@ int enviarRequisicaoHTTP(
         *response = respostaHttp;
     }
     http.end();
+    Serial.println("9");
 
     // =========================
     // TOKEN INVÁLIDO
@@ -330,6 +379,9 @@ bool iniciarSessao() {
         &resposta
     );
 
+    Serial.print("Código recebido em iniciarSessao: ");
+    Serial.println(code);
+
 if (code == 201) {
 
     JsonDocument doc;
@@ -374,6 +426,11 @@ void encerrarSessao() {
 // ==========================
 
 void enviarTemperatura() {
+
+    Serial.printf(
+    "Heap = %u\n",
+    ESP.getFreeHeap()
+);
 
     JsonDocument doc;
 
