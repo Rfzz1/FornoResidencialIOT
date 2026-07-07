@@ -6,6 +6,7 @@
 
 static unsigned long milisInicioSessao = 0;
 static unsigned long tempoLigado = 0;
+static unsigned long milisUltimaAtualizacao = 0;
 static uint32_t ultimoSegundoExibido = 0;
 
 void tratarSessao() {
@@ -39,6 +40,11 @@ void tratarSessao() {
         Serial.print("Tempo ligado: ");
         Serial.print(dados.tempoLigadoSegundos);
         Serial.println(" segundos");
+
+        if (millis() - milisUltimaAtualizacao >= 10000) {
+            milisUltimaAtualizacao = millis();
+            atualizarSessao();
+        }
     }
 }
 

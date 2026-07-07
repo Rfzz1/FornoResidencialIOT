@@ -19,7 +19,16 @@ void conectarWiFi() {
 
     Serial.println("Conectando...");
 
+    unsigned long inicioTentativa = millis();
+    const unsigned long TIMEOUT_WIFI = 15000;
+
     while (WiFi.status() != WL_CONNECTED) {
+
+        if(millis() - inicioTentativa >= TIMEOUT_WIFI) {
+            Serial.println("Timeout ao conectar Wi-Fi. Operando offline.");
+            return;
+        }
+
         if (millis() - milisEstabilizarWiFi >= 1000) {
             milisEstabilizarWiFi = millis();
             Serial.print(".");

@@ -28,7 +28,6 @@ String sessaoId = "";
 String serialNumber;
 String deviceSecret;
 
-String body;
 double temperaturaAtual = 0;
 double temperaturaUltima = 0;
 
@@ -155,6 +154,7 @@ void fazerLogin() {
     doc["serialNumber"] = serialNumber;
 
     String jsonOutput;
+
     serializeJson(doc, jsonOutput);
 
     Serial.println("Enviando JSON: " + jsonOutput);
@@ -220,7 +220,8 @@ int enviarRequisicaoHTTP(
     const String &url,
     const String &metodo,
     const String &payload,
-    String *response
+    String *response = nullptr,
+    int tentativa = 0
 ) {
 
     WiFiClient client;
@@ -315,15 +316,18 @@ int enviarRequisicaoHTTP(
     // =========================
 
     if (codigo == 401) {
-
-        Serial.println("Token expirado. Refazendo login...");
+        
+        if(tentativa >= 3) {
+            Serial.println("Falha crítica no login.");
+            return codigo;
+        }
 
         tokenJWT = "";
 
         if (!garantirLogin())
             return codigo;
 
-        return enviarRequisicaoHTTP(url, metodo, payload, response);
+        return enviarRequisicaoHTTP(url, metodo, payload, response, tentativa + 1);
     }
 
     // =========================
@@ -347,6 +351,7 @@ int enviarRequisicaoHTTP(
             sessaoId = "";
 
             if (iniciarSessao()) {
+                tentativasSessao = 0;
                 tentandoRecuperarSessao = false;
                 return enviarRequisicaoHTTP(url, metodo, payload, response);
             }
@@ -411,14 +416,90 @@ return false;
 
 void encerrarSessao() {
 
+    String body;
+    JsonDocument doc;
+
+    doc["estadoSistemaFinal"] = obterEstadoSistemaTexto(dados.estadoAtual);
+    doc["estadoFornoFinal"] = obterEstadoFornoTexto();
+
+    serializeJson(doc, body);
+
+    String resposta;
+
     int code = enviarRequisicaoHTTP(
         String(API_BASE_URL) + "/v1/sessoes/" + sessaoId + "/encerrar",
         "PUT",
         body,
-        nullptr
+        &resposta
     );
 
     Serial.printf("Encerrar sessão: %d\n", code);
+    Serial.println("Resposta:");
+    Serial.println(resposta);
+}
+
+// ==========================
+// ATUALIZAR SESSÃO
+// ==========================
+
+void atualizarSessao() {
+
+    String body;
+    JsonDocument doc;
+
+    doc["estadoSistemaAtual"] = obterEstadoSistemaTexto(dados.estadoAtual);
+
+    serializeJson(doc, body);
+
+    String resposta;
+
+    int code = enviarRequisicaoHTTP(
+        String(API_BASE_URL) + "/v1/sessoes/" + sessaoId + "/atualizar",
+        "PUT",
+        body,
+        &resposta
+    );
+
+    Serial.printf("Atualizar sessão: %d\n", code);
+    Serial.println("Resposta:");
+    Serial.println(resposta);
+}
+
+// ==========================
+// ENVIAR TELEMETRIA
+// ==========================
+
+void enviarTelemetria() {
+
+    JsonDocument doc;
+    String body;
+
+    if (!iniciarSessao()) {
+        Serial.println("Nao foi possivel iniciar a sessao.");
+        return;
+    }
+
+    doc["temperaturaAtual"] = dados.TEMP_ATUAL;
+    doc["temperaturaUltima"] = dados.ULTIMA_TEMP;
+    doc["estadoSistema"] = obterEstadoSistemaTexto(dados.estadoAtual);
+    doc["estadoForno"] = obterEstadoFornoTexto();
+    doc["tempoLigadoMinutos"] = dados.tempoLigadoMinutos;
+
+
+    serializeJson(doc, body);
+
+    String resposta;
+
+    int code = enviarRequisicaoHTTP(
+        String(API_BASE_URL) + "/v1/telemetrias",
+        "POST",
+        body,
+        &resposta
+    );
+
+    Serial.printf("Código: %d\n", code);
+    Serial.println("Resposta:");
+    Serial.println(resposta);
 }
 
 // ==========================
@@ -433,6 +514,7 @@ void enviarTemperatura() {
 );
 
     JsonDocument doc;
+    String body;
 
     Serial.print("Sessao: ");
     Serial.println(sessaoId);
@@ -452,6 +534,7 @@ Serial.println(sessaoId);
     doc["temperaturaAtual"] = dados.TEMP_ATUAL;
     doc["temperaturaUltima"] = dados.ULTIMA_TEMP;
     doc["temperaturaExterna"] = dados.TEMP_EXT_ATUAL;
+
 
     serializeJson(doc, body);
 
@@ -478,6 +561,7 @@ Serial.println(sessaoId);
 void enviarEvento(String tipo) {
 
     JsonDocument doc;
+    String body;
 
     doc["sessaoId"] = sessaoId;
     doc["tipo"] = tipo;
@@ -637,6 +721,7 @@ void sincronizarTemperaturas() {
     temperaturaAtual = dados.TEMP_ATUAL;
     temperaturaUltima = dados.ULTIMA_TEMP;
     enviarTemperatura();
+    enviarTelemetria();
 }
 
 // ==========================

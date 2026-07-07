@@ -8,6 +8,8 @@ bool iniciarSessao();
 void encerrarSessao();
 void enviarTemperatura();
 void enviarEvento(String tipo);
+void enviarTelemetria();
+void atualizarSessao();
 
 String obterSerialNumber();
 
@@ -27,7 +29,8 @@ int enviarRequisicaoHTTP(
     const String &url,
     const String &metodo,
     const String &body,
-    String *response = nullptr
+    String *response = nullptr,
+    int tentativa = 0
 );
 
 #endif
