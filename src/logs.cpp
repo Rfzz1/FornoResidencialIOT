@@ -44,16 +44,16 @@ String obterEstadoFornoTexto() {
     switch (dados.estadoFornoAtual) {
 
         case FORNO_DESLIGADO:
-            return "DESLIGADO";
+            return "FORNO_DESLIGADO";
 
         case FORNO_AQUECENDO:
-            return "AQUECENDO";
+            return "FORNO_AQUECENDO";
 
         case FORNO_ATIVO:
-            return "ATIVO";
+            return "FORNO_ATIVO";
 
         case FORNO_ESFRIANDO:
-            return "ESFRIANDO";
+            return "FORNO_ESFRIANDO";
 
         default:
             return "DESCONHECIDO";

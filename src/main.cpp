@@ -12,7 +12,7 @@
 
     Serial.begin(115200);
 
-    Serial.println("FIRMWARE V2");
+    Serial.println("FIRMWARE V3");
 
     inicializarBluetooth();
 

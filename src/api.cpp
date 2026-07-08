@@ -448,6 +448,7 @@ void atualizarSessao() {
     JsonDocument doc;
 
     doc["estadoSistemaAtual"] = obterEstadoSistemaTexto(dados.estadoAtual);
+    doc["estadoFornoAtual"] = obterEstadoFornoTexto();
 
     serializeJson(doc, body);
 
@@ -461,6 +462,38 @@ void atualizarSessao() {
     );
 
     Serial.printf("Atualizar sessão: %d\n", code);
+    Serial.println("Resposta:");
+    Serial.println(resposta);
+}
+
+// ==========================
+// ENVIAR SERIAL NUMBER
+// ==========================
+
+void enviarSerialNumber() {
+
+    JsonDocument doc;
+    String body;
+
+    if (!iniciarSessao()) {
+        Serial.println("Nao foi possivel iniciar a sessao.");
+        return;
+    }
+
+
+    doc["serialNumber"] = serialNumber;
+    serializeJson(doc, body);
+
+    String resposta;
+
+    int code = enviarRequisicaoHTTP(
+        String(API_BASE_URL) + "/v1/fornos/fabricar",
+        "POST",
+        body,
+        &resposta
+    );
+
+    Serial.printf("Código: %d\n", code);
     Serial.println("Resposta:");
     Serial.println(resposta);
 }

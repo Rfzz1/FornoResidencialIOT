@@ -29,8 +29,8 @@ int enviarRequisicaoHTTP(
     const String &url,
     const String &metodo,
     const String &body,
-    String *response = nullptr,
-    int tentativa = 0
+    String *response,
+    int tentativa
 );
 
 #endif
