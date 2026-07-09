@@ -467,38 +467,6 @@ void atualizarSessao() {
 }
 
 // ==========================
-// ENVIAR SERIAL NUMBER
-// ==========================
-
-void enviarSerialNumber() {
-
-    JsonDocument doc;
-    String body;
-
-    if (!iniciarSessao()) {
-        Serial.println("Nao foi possivel iniciar a sessao.");
-        return;
-    }
-
-
-    doc["serialNumber"] = serialNumber;
-    serializeJson(doc, body);
-
-    String resposta;
-
-    int code = enviarRequisicaoHTTP(
-        String(API_BASE_URL) + "/v1/fornos/fabricar",
-        "POST",
-        body,
-        &resposta
-    );
-
-    Serial.printf("Código: %d\n", code);
-    Serial.println("Resposta:");
-    Serial.println(resposta);
-}
-
-// ==========================
 // ENVIAR TELEMETRIA
 // ==========================
 
@@ -709,16 +677,63 @@ void verificarReiniciar() {
 
 void verificarEstadoDispositivo() {
 
+    conectarWiFi();
+
     if (preferences.getString("secret", "").isEmpty()) {
         dados.espConfigurado = false;
-        Serial.println("Aguardando configuração Bluetooth...");
+
+        JsonDocument doc;
+        HTTPClient http;
+        WiFiClient client;
+        
+        http.begin(client, String(API_BASE_URL) + "/v1/fornos/auto-provisionar"); 
+        http.addHeader("Content-Type", "application/json");
+
+        doc["serialNumber"] = serialNumber;
+
+        String jsonOutput;
+        serializeJson(doc, jsonOutput);
+
+        Serial.println("Enviando JSON: " + jsonOutput);
+
+        int code = http.POST(jsonOutput);
+
+        if (code == 200) {
+            
+            String payload = http.getString(); // Pega o corpo da resposta
+
+            JsonDocument resDoc; // <-- NOME ALTERADO AQUI
+            deserializeJson(resDoc, payload);
+            
+            String secretRecebida = resDoc["secret"].as<String>(); // Extrai a secret do JSON
+            preferences.putString("secret", secretRecebida); // Salva na memória não-volátil
+
+            deviceSecret = secretRecebida; // Atualiza variável global com a nova secret
+            dados.espConfigurado = true;
+
+            Serial.println("Auto-provisionamento concluído com sucesso!");
+
+            fazerLogin();
+
+        } else {
+            Serial.printf("Falha no provisionamento. Código HTTP: %d\n", code);
+
+            Serial.println("Ativando Bluetooth para diagnóstico e aguardando...");
+            // Movemos o log para cá, onde ele faz sentido:
+            Serial.println("Aguardando configuração Bluetooth...");
+            inicializarBluetooth();
+        }
+
+        http.end();
+    
     } else {
         dados.espConfigurado = true;
-        conectarWiFi();
+        Serial.println("Dispositivo já provisionado. Iniciando rotina normal...");
         diagnosticoCompleto();
         fazerLogin();
     }
 }
+ 
 
 void gerenciarEstadoOperacional() {
 
