@@ -6,6 +6,10 @@
 
 static unsigned long milisDuracaoEstado = 0;
 
+static unsigned long milisUltimaJanela = 0;
+static double tempReferenciaJanela = 0;
+const unsigned long TEMPO_JANELA_TERMICA = 30000;
+
 void definirEstadoSistema() {
 
   switch (dados.estadoAtual) {
@@ -38,16 +42,9 @@ void definirEstadoSistema() {
 
         dados.estadoAtual = CRITICO;
 
-      } else if (dados.TEMP_ATUAL < TEMP_ALERTA_SAIDA) {
-
-        dados.estadoAtual = SEGURO;
-
       }
-
-      if (dados.TEMP_EXT_ATUAL < TEMP_EXT_MAXIMA) {
-
+      else if (dados.TEMP_ATUAL < TEMP_ALERTA_SAIDA && dados.TEMP_EXT_ATUAL < TEMP_EXT_MAXIMA) {
         dados.estadoAtual = SEGURO;
-
       }
 
       break;
@@ -75,25 +72,39 @@ void definirEstadoSistema() {
 }
 
 void definirEstadoForno() {
-
   dados.estadoFornoAnterior = dados.estadoFornoAtual;
 
+  // 1. Estado Desligado: avaliado de forma imediata
   if (dados.TEMP_ATUAL < 40) {
-
     dados.estadoFornoAtual = FORNO_DESLIGADO;
+    // Reseta a referência para evitar saltos bruscos caso o forno volte a ligar
+    tempReferenciaJanela = dados.TEMP_ATUAL; 
+    return;
+  }
 
-  } else if (dados.TEMP_ATUAL > dados.ULTIMA_TEMP + MARGEM_ESTABILIDADE) {
+  // 2. Inicializa a janela de referência na primeira execução válida
+  if (tempReferenciaJanela == 0) {
+    tempReferenciaJanela = dados.TEMP_ATUAL;
+    milisUltimaJanela = millis();
+  }
 
-    dados.estadoFornoAtual = FORNO_AQUECENDO;
+  // 3. Avalia a tendência térmica apenas quando o tempo da janela expirar
+  if (millis() - milisUltimaJanela >= TEMPO_JANELA_TERMICA) {
+    
+    // Compara a temperatura de agora com a de 30 segundos atrás
+    if (dados.TEMP_ATUAL > tempReferenciaJanela + MARGEM_ESTABILIDADE) {
+      dados.estadoFornoAtual = FORNO_AQUECENDO;
+      
+    } else if (dados.TEMP_ATUAL < tempReferenciaJanela - MARGEM_ESTABILIDADE) {
+      dados.estadoFornoAtual = FORNO_ESFRIANDO;
+      
+    } else {
+      dados.estadoFornoAtual = FORNO_ATIVO;
+    }
 
-  } else if (dados.TEMP_ATUAL < dados.ULTIMA_TEMP - MARGEM_ESTABILIDADE) {
-
-    dados.estadoFornoAtual = FORNO_ESFRIANDO;
-
-  } else {
-
-    dados.estadoFornoAtual = FORNO_ATIVO;
-
+    // 4. Salva a temperatura e o tempo atuais para a próxima janela
+    tempReferenciaJanela = dados.TEMP_ATUAL;
+    milisUltimaJanela = millis();
   }
 }
 

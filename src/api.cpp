@@ -563,6 +563,7 @@ void enviarEvento(String tipo) {
 
     JsonDocument doc;
     String body;
+    body.reserve(128);
 
     doc["sessaoId"] = sessaoId;
     doc["tipo"] = tipo;
@@ -570,13 +571,13 @@ void enviarEvento(String tipo) {
     serializeJson(doc, body);
 
     int code = enviarRequisicaoHTTP(
-        String(API_BASE_URL) + "/v1/eventos",
+        URL_EVENTOS,
         "POST",
         body,
         nullptr
     );
 
-    Serial.printf("Evento: %d\n", code);
+    Serial.printf("Evento HTTP Código: %d\n", code);
 }
 
 // ==========================
@@ -752,7 +753,6 @@ void gerenciarEstadoOperacional() {
     atualizarEstadoForno();
 
     processarEventos();
-    processarFilaEventos();
 
     tratarSessao();
 

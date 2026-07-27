@@ -21,8 +21,9 @@
     void iniciarSessaoEstado(SessaoEstado &sessao);
     void finalizarSessaoEstado(SessaoEstado &sessao);
     void adicionarEvento(eventoSistema evento);
-    void processarFilaEventos();
     void processarEventos();
     void tratarEvento(eventoSistema evento);
+    void atualizarEstadoLogico(estadoSistema novoEstadoLido);
+    void inicializarEventos();
 
 #endif

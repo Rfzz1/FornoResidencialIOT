@@ -31,6 +31,7 @@ extern MAX6675 TERMOPAR;
 // CONSTANTES
 // =====================================================
 constexpr const char* API_BASE_URL = "http://monitoramentoforno.com.br";
+const String URL_EVENTOS = String(API_BASE_URL) + "/v1/eventos";
 const float TEMP_CRITICA_ENTRADA = 300;
 const float TEMP_CRITICA_SAIDA = 290;
 const float TEMP_EXT_MAXIMA = 80;

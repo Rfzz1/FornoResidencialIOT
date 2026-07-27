@@ -6,35 +6,43 @@
 #include "logs.h"
 #include "api.h"
 
-eventoSistema filaEventos[TAMANHO_FILA_EVENTOS];
-int inicioFila = 0;
-int fimFila = 0;
+unsigned long ultimoTempoMudanca = 0;
+const unsigned long TEMPO_DEBOUNCE = 3000;
 
-void adicionarEvento(eventoSistema evento) {
+static QueueHandle_t filaEventos = NULL;
 
-    int proximo =
-        (fimFila + 1) % TAMANHO_FILA_EVENTOS;
-
-    if (proximo == inicioFila) {
-
-        Serial.println(
-            "ERRO: fila cheia"
-        );
-
-        return;
+static void taskProcessarEventos(void *pvParameters) {
+    eventoSistema evento;
+    while (1) {
+        // Dorme até chegar um evento na fila
+        if (xQueueReceive(filaEventos, &evento, portMAX_DELAY) == pdPASS) {
+            tratarEvento(evento);
+        }
     }
+}
+void inicializarEventos() {
+    // 1. Cria a fila interna
+    filaEventos = xQueueCreate(TAMANHO_FILA_EVENTOS, sizeof(eventoSistema));
 
-    filaEventos[fimFila] = evento;
-
-    fimFila = proximo;
+    // 2. Dispara a task silenciosamente em segundo plano
+    if (filaEventos != NULL) {
+        xTaskCreate(
+            taskProcessarEventos,
+            "TaskEventos",
+            4096,
+            NULL,
+            1,
+            NULL
+        );
+    }
 }
 
-void processarFilaEventos() {
-    while (inicioFila != fimFila) {
-        eventoSistema evento = filaEventos[inicioFila];
-        inicioFila = (inicioFila + 1) % TAMANHO_FILA_EVENTOS;
-
-        tratarEvento(evento);
+void adicionarEvento(eventoSistema evento) {
+    if (filaEventos != NULL) {
+        // Envia para a fila do FreeRTOS sem bloquear a CPU
+        if (xQueueSend(filaEventos, &evento, (TickType_t)0) != pdPASS) {
+            Serial.println("ERRO: fila de eventos cheia");
+        }
     }
 }
 
@@ -187,4 +195,17 @@ bool saiuEstado(estadoSistema estado) {
         dados.estadoAnterior == estado &&
         dados.estadoAtual != estado
     );
+}
+
+void atualizarEstadoLogico(estadoSistema novoEstadoLido) {
+    if (novoEstadoLido != dados.estadoAtual) {
+        if (millis() - ultimoTempoMudanca > TEMPO_DEBOUNCE) {
+            dados.estadoAnterior = dados.estadoAtual;
+            dados.estadoAtual = novoEstadoLido;
+            ultimoTempoMudanca = millis();
+        }
+    } else {
+        // Reseta o tempo se a leitura voltou ao normal antes de confirmar
+        ultimoTempoMudanca = millis();
+    }
 }
