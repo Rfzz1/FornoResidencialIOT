@@ -436,6 +436,8 @@ void encerrarSessao() {
     Serial.printf("Encerrar sessão: %d\n", code);
     Serial.println("Resposta:");
     Serial.println(resposta);
+
+    sessaoId = "";
 }
 
 // ==========================
@@ -471,6 +473,17 @@ void atualizarSessao() {
 // ==========================
 
 void enviarTelemetria() {
+
+    if (sessaoId.isEmpty()) {
+        if (dados.estadoFornoAtual == FORNO_DESLIGADO) {
+            return; 
+        }
+        // Se estiver ligado mas perdeu a sessão (ex: reiniciou), tenta recuperar
+        if (!iniciarSessao()) {
+            Serial.println("Nao foi possivel iniciar a sessao.");
+            return;
+        }
+    }
 
     JsonDocument doc;
     String body;
@@ -508,6 +521,16 @@ void enviarTelemetria() {
 // ==========================
 
 void enviarTemperatura() {
+
+    if (sessaoId.isEmpty()) {
+        if (dados.estadoFornoAtual == FORNO_DESLIGADO) {
+            return; 
+        }
+        if (!iniciarSessao()) {
+            Serial.println("Nao foi possivel iniciar a sessao.");
+            return;
+        }
+    }
 
     Serial.printf(
     "Heap = %u\n",
@@ -560,6 +583,11 @@ Serial.println(sessaoId);
 // ==========================
 
 void enviarEvento(String tipo) {
+
+    if (!iniciarSessao() || sessaoId.isEmpty()) {
+        Serial.println("Falha ao enviar evento: Sessao não iniciada ou sessaoId vazio.");
+        return;
+    }
 
     JsonDocument doc;
     String body;
@@ -743,6 +771,8 @@ void gerenciarEstadoOperacional() {
     if (!dados.espConfigurado) {
         return;
     }
+
+    verificarWiFi();
 
     if (tokenJWT.isEmpty() && WiFi.status() == WL_CONNECTED) {
         fazerLogin();

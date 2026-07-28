@@ -23,8 +23,10 @@ void lerTemperatura() {
 
     leituraBruta = TERMOPAR.readCelsius();
 
-    if (isnan(leituraBruta))
-        return;
+    if (isnan(leituraBruta) || leituraBruta <= 1.0 || leituraBruta > 1000.0) {
+        Serial.println("Interferência detectada! Leitura ignorada.");
+        return; 
+    }
 
     dados.ULTIMA_TEMP = dados.TEMP_ATUAL;
 

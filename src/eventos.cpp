@@ -21,29 +21,7 @@ static void taskProcessarEventos(void *pvParameters) {
     }
 }
 void inicializarEventos() {
-    // 1. Cria a fila interna
-    filaEventos = xQueueCreate(TAMANHO_FILA_EVENTOS, sizeof(eventoSistema));
-
-    // 2. Dispara a task silenciosamente em segundo plano
-    if (filaEventos != NULL) {
-        xTaskCreate(
-            taskProcessarEventos,
-            "TaskEventos",
-            4096,
-            NULL,
-            1,
-            NULL
-        );
-    }
-}
-
-void adicionarEvento(eventoSistema evento) {
-    if (filaEventos != NULL) {
-        // Envia para a fila do FreeRTOS sem bloquear a CPU
-        if (xQueueSend(filaEventos, &evento, (TickType_t)0) != pdPASS) {
-            Serial.println("ERRO: fila de eventos cheia");
-        }
-    }
+    Serial.println("Sistema de eventos inicializado.");
 }
 
 void tratarEvento(eventoSistema evento) {
@@ -123,29 +101,30 @@ void tratarEvento(eventoSistema evento) {
 void processarEventos() {
 
     if (entrouEstado(ALERTA)) {
-        adicionarEvento(ALERTA_ENTRADA);
+        tratarEvento(ALERTA_ENTRADA);
     }
 
     if (saiuEstado(ALERTA)) {
-        adicionarEvento(ALERTA_SAIDA);
+        tratarEvento(ALERTA_SAIDA);
     }
 
     if (entrouEstado(CRITICO)) {
-        adicionarEvento(CRITICO_ENTRADA);
+        tratarEvento(CRITICO_ENTRADA);
     }
 
     if (saiuEstado(CRITICO)) {
-        adicionarEvento(CRITICO_SAIDA);
+        tratarEvento(CRITICO_SAIDA);
     }
 
     if (entrouEstado(ERRO_SENSOR)) {
-        adicionarEvento(ERRO_SENSOR_ENTRADA);
+        tratarEvento(ERRO_SENSOR_ENTRADA);
     }
 
     if (saiuEstado(ERRO_SENSOR)) {
-        adicionarEvento(ERRO_SENSOR_SAIDA);
+        tratarEvento(ERRO_SENSOR_SAIDA);
     }
 
+    // Atualiza o estado anterior DEPOIS de todos os tratamentos
     dados.estadoAnterior = dados.estadoAtual;
 }
 
