@@ -4,10 +4,9 @@
 // =====================================================
 // PINOS
 // =====================================================
-
-#define RED 23
-#define GREEN 22
-#define BLUE 21
+#define BLUE 23
+#define GREEN 21
+#define RED 22
 
 #define TERMOPAR_SO 19
 #define TERMOPAR_CS 5
@@ -31,6 +30,10 @@ extern MAX6675 TERMOPAR;
 // CONSTANTES
 // =====================================================
 constexpr const char* API_BASE_URL = "http://monitoramentoforno.com.br";
+
+//protocolo "wss://" (WebSocket Seguro)
+constexpr const char* WS_URL = "wss://www.monitoramentoforno.com.br/ws/forno?serialNumber=";
+
 const String URL_EVENTOS = String(API_BASE_URL) + "/v1/eventos";
 const float TEMP_CRITICA_ENTRADA = 300;
 const float TEMP_CRITICA_SAIDA = 290;

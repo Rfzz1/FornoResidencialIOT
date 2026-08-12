@@ -7,6 +7,7 @@
   #include "api.h"
   #include "telemetria.h"
   #include "iot.h"
+  #include "ws.h"
 
   void setup() {
 
@@ -22,6 +23,7 @@
 
     while (millis() - inicio < 10000) {
         processarBluetooth();
+        piscarLedAguardandoConfigBluetooth();
         delay(10);
     }
 
@@ -59,6 +61,7 @@
         WiFi.status() == WL_CONNECTED) {
 
         estabilizarHoraLocal();
+        processarWebSocket();
     }
 
     atualizarLEDs();

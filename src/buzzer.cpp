@@ -61,30 +61,35 @@ void buzzerCritico() {
 
 void atualizarBuzzer() {
 
+  if (dados.estadoAtual != CRITICO && dados.estadoAtual != ALERTA && dados.estadoAtual != ERRO_SENSOR) {
+    dados.buzzerMutado = false;
+  }
+
+  if (dados.buzzerMutado) {
+    desligarBuzzer();
+    return;
+  }
+
   switch (dados.estadoAtual) {
 
     case CRITICO:
 
       buzzerCritico();
-
       break;
 
     case ALERTA:
 
       buzzerAlerta();
-
       break;
 
     case ERRO_SENSOR:
 
       buzzerErroSensor();
-
       break;
 
     default:
 
       desligarBuzzer();
-
       break;
   }
 }

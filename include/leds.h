@@ -2,5 +2,6 @@
 #define LEDS_H
 
 void atualizarLEDs();
+void piscarLedAguardandoConfigBluetooth();
 
 #endif

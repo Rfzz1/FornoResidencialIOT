@@ -28,8 +28,6 @@ void lerTemperatura() {
         return; 
     }
 
-    dados.ULTIMA_TEMP = dados.TEMP_ATUAL;
-
     bufferTemperaturas[indiceBuffer] = leituraBruta;
 
     indiceBuffer++;
@@ -54,12 +52,15 @@ void lerTemperatura() {
 
     }
 
+    dados.ULTIMA_TEMP = dados.TEMP_ATUAL;
     dados.TEMP_ATUAL = soma / quantidade;
 
-    Serial.printf(
-        "Temperatura: %.2f°C\n",
-        dados.TEMP_ATUAL
-    );
+    if (dados.sessaoIniciada) {
+
+      Serial.printf("[REGISTRO] Temperatura: %.2f °C\n", dados.TEMP_ATUAL);
+    } else {
+      Serial.printf("Aguardando inicio da sessão... Temp atual: %.2f°C\n", dados.TEMP_ATUAL);
+    }
 }
 
 void lerTemperaturaExterna() {
@@ -90,11 +91,15 @@ void atualizarSensores() {
 
     ultimoEnvioTemperatura = millis();
 
-    if (temperaturaValida()) {
+    if (dados.sessaoIniciada) {
+
+      if (temperaturaValida()) {
+
         sincronizarTemperaturas();
-    } else {
-        // Se a temperatura não for válida, podemos optar por não enviar ou enviar um valor específico
+
+      } else {
         Serial.println("Temperatura inválida. Não enviando dados para a API.");
+      }
     }
 
   }

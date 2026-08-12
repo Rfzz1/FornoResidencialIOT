@@ -4,6 +4,7 @@
 #include "telemetria.h"
 
 static unsigned long milisPiscarLedErro = 0;
+static unsigned long milisPiscarLedAguardandoConfigBluetooth = 0;
 static unsigned long milisPiscarLedInicializacao = 0;
 
 void desligarLEDs() {
@@ -24,6 +25,22 @@ void piscarLedErro() {
 
     desligarLEDs();
 
+    digitalWrite(RED, dados.estadoPisca);
+
+  }
+}
+
+void piscarLedAguardandoConfigBluetooth() {
+  
+  if (millis() - milisPiscarLedAguardandoConfigBluetooth >= 500) {
+
+    milisPiscarLedAguardandoConfigBluetooth = millis();
+
+    dados.estadoPisca = !dados.estadoPisca;
+
+    desligarLEDs();
+
+    digitalWrite(GREEN, dados.estadoPisca);
     digitalWrite(RED, dados.estadoPisca);
 
   }

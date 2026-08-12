@@ -24,6 +24,8 @@
         bool horaSincronizada = false;
         bool timeoutNTP = false;
         bool espConfigurado = false;
+        bool buzzerMutado = false;
+        bool sessaoIniciada = false;
 
         float TEMP_ATUAL = 0;
         float ULTIMA_TEMP = 0;

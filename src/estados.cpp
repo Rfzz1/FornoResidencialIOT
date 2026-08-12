@@ -75,8 +75,9 @@ void definirEstadoForno() {
   dados.estadoFornoAnterior = dados.estadoFornoAtual;
 
   // 1. Estado Desligado: avaliado de forma imediata
-  if (dados.TEMP_ATUAL < 40) {
+  if (dados.TEMP_ATUAL < 60) {
     dados.estadoFornoAtual = FORNO_DESLIGADO;
+    dados.sessaoIniciada = false;
     // Reseta a referência para evitar saltos bruscos caso o forno volte a ligar
     tempReferenciaJanela = dados.TEMP_ATUAL; 
     return;
@@ -86,6 +87,7 @@ void definirEstadoForno() {
   if (tempReferenciaJanela == 0) {
     tempReferenciaJanela = dados.TEMP_ATUAL;
     milisUltimaJanela = millis();
+    dados.sessaoIniciada = true;
   }
 
   // 3. Avalia a tendência térmica apenas quando o tempo da janela expirar
