@@ -19,13 +19,26 @@ bool bufferCheio = false;
 
 MAX6675 TERMOPAR(TERMOPAR_SCK, TERMOPAR_CS, TERMOPAR_SO);
 
-void lerTemperatura() {
+void taskTemperatura(void *parameter) {
+
+  for (;;) {
+
+    float temperaturaAtual = lerTemperatura();
+    xQueueSend(temperaturaQueue, &temperaturaAtual, 0);
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+  }
+
+}
+
+float lerTemperatura() {
 
     leituraBruta = TERMOPAR.readCelsius();
 
     if (isnan(leituraBruta) || leituraBruta <= 1.0 || leituraBruta > 1000.0) {
         Serial.println("Interferência detectada! Leitura ignorada.");
-        return; 
+        return NAN; 
     }
 
     bufferTemperaturas[indiceBuffer] = leituraBruta;
@@ -53,14 +66,15 @@ void lerTemperatura() {
     }
 
     dados.ULTIMA_TEMP = dados.TEMP_ATUAL;
-    dados.TEMP_ATUAL = soma / quantidade;
+    float temperaturaAtual = soma / quantidade;
 
     if (dados.sessaoIniciada) {
 
-      Serial.printf("[REGISTRO] Temperatura: %.2f °C\n", dados.TEMP_ATUAL);
+      Serial.printf("[REGISTRO] Temperatura: %.2f °C\n", temperaturaAtual);
     } else {
-      Serial.printf("Aguardando inicio da sessão... Temp atual: %.2f°C\n", dados.TEMP_ATUAL);
+      Serial.printf("Aguardando inicio da sessão... Temp atual: %.2f°C\n", temperaturaAtual);
     }
+    return temperaturaAtual;
 }
 
 void lerTemperaturaExterna() {
@@ -80,29 +94,8 @@ void lerTemperaturaExterna() {
 
 void atualizarSensores() {
 
-  if (millis() - ultimaLeituraSensor >= 1000) {
-
-    ultimaLeituraSensor = millis();
     lerTemperatura();
     lerTemperaturaExterna();
-  }
-
-  if(millis() - ultimoEnvioTemperatura >= 5000) {
-
-    ultimoEnvioTemperatura = millis();
-
-    if (dados.sessaoIniciada) {
-
-      if (temperaturaValida()) {
-
-        sincronizarTemperaturas();
-
-      } else {
-        Serial.println("Temperatura inválida. Não enviando dados para a API.");
-      }
-    }
-
-  }
 }
 
 bool temperaturaValida() {

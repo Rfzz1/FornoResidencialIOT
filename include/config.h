@@ -20,6 +20,8 @@
 #include <math.h>
 #include <MAX6675.h>
 #include <WiFi.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 
 // =====================================================
 // SENSOR
@@ -51,6 +53,11 @@ constexpr long  gmtOffset_sec = -10800; //CARLOS BARBOSA - GMT-3
 constexpr int   daylightOffset_sec = 0;
 
 const int TAMANHO_FILA_EVENTOS = 10;
+
+//FreeRTOS
+//Sensores
+
+extern QueueHandle_t temperaturaQueue;
 
 // =====================================================
 // ENUMS

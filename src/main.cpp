@@ -9,11 +9,17 @@
   #include "iot.h"
   #include "ws.h"
 
+  QueueHandle_t temperaturaQueue;
+
   void setup() {
 
     Serial.begin(115200);
 
     Serial.println("FIRMWARE V3");
+
+    //Filas RTOS
+
+    temperaturaQueue = xQueueCreate(1, sizeof(float));
 
     inicializarBluetooth();
 
