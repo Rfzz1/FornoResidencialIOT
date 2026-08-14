@@ -65,40 +65,13 @@ float lerTemperatura() {
 
     }
 
-    dados.ULTIMA_TEMP = dados.TEMP_ATUAL;
     float temperaturaAtual = soma / quantidade;
 
-    if (dados.sessaoIniciada) {
-
-      Serial.printf("[REGISTRO] Temperatura: %.2f °C\n", temperaturaAtual);
-    } else {
-      Serial.printf("Aguardando inicio da sessão... Temp atual: %.2f°C\n", temperaturaAtual);
-    }
+    Serial.printf("Leitura bruta do sensor: %.2f °C\n", temperaturaAtual);
     return temperaturaAtual;
 }
 
-void lerTemperaturaExterna() {
-
-    bool quente = digitalRead(TERMOSTATO);
-
-    if (quente) {
-
-        dados.TEMP_EXT_ATUAL = TEMP_EXT_MAXIMA;
-
-    } else {
-
-        dados.TEMP_EXT_ATUAL = 0;
-
-    }
-}
-
-void atualizarSensores() {
-
-    lerTemperatura();
-    lerTemperaturaExterna();
-}
-
-bool temperaturaValida() {
+bool temperaturaValida(bool validade) {
 
   if (isnan(dados.TEMP_ATUAL)) {
 
