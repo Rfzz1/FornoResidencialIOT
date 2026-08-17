@@ -58,6 +58,8 @@ const int TAMANHO_FILA_EVENTOS = 10;
 //Sensores
 
 extern QueueHandle_t temperaturaQueue;
+extern SemaphoreHandle_t mutexEstadoForno;
+extern SemaphoreHandle_t mutexEstadoSistema;
 
 // =====================================================
 // ENUMS

@@ -2,8 +2,36 @@
 #include "config.h"
 #include "alertas.h"
 #include "telemetria.h"
+#include "buzzer.h"
+#include "leds.h"
 
 static unsigned long milisAtualizarAlertas = 0;
+
+void taskAlertas(void *parameter) {
+
+  estadoForno estadoFornoAtual;
+  estadoSistema estadoSistemaAtual;
+
+  for (;;) {
+
+    xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
+    estadoFornoAtual = dados.estadoFornoAtual;  
+
+    xSemaphoreGive(mutexEstadoForno);
+
+    xSemaphoreTake(mutexEstadoSistema, portMAX_DELAY);
+    estadoSistemaAtual = dados.estadoAtual;
+
+    xSemaphoreGive(mutexEstadoSistema);
+    
+    alertas();
+
+    atualizarBuzzer();
+    atualizarLEDs();
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
+  }
+}
 
 void alertas() {
 
@@ -19,12 +47,5 @@ void alertas() {
 
   if (dados.TEMP_EXT_ATUAL >= TEMP_EXT_MAXIMA) {
     Serial.println("Notificacao: Temperatura externa atingiu 80ºC!");
-  }
-}
-
-void atualizarAlertas() {
-  if (millis() - milisAtualizarAlertas >= 1000) {
-    milisAtualizarAlertas = millis();
-    alertas();
   }
 }

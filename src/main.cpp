@@ -10,6 +10,8 @@
   #include "ws.h"
 
   QueueHandle_t temperaturaQueue;
+  SemaphoreHandle_t mutexEstadoForno;
+  SemaphoreHandle_t mutexEstadoSistema;
 
   void setup() {
 
@@ -20,6 +22,9 @@
     //Filas RTOS
 
     temperaturaQueue = xQueueCreate(1, sizeof(float));
+    mutexEstadoSistema = xSemaphoreCreateMutex();
+    mutexEstadoForno = xSemaphoreCreateMutex();
+    
 
     inicializarBluetooth();
 

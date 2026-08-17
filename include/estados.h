@@ -16,8 +16,6 @@ FORNO_ATIVO,
 FORNO_ESFRIANDO
 };
 
-void definirEstadoSistema();
-void atualizarEstadoSistema();
-void definirEstadoForno();
-void atualizarEstadoForno();
+estadoSistema definirEstadoSistema();
+estadoForno definirEstadoForno();
 #endif

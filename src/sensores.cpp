@@ -71,7 +71,7 @@ float lerTemperatura() {
     return temperaturaAtual;
 }
 
-bool temperaturaValida(bool validade) {
+bool temperaturaValida() {
 
   if (isnan(dados.TEMP_ATUAL)) {
 

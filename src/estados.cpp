@@ -9,14 +9,17 @@ static unsigned long milisDuracaoEstado = 0;
 static unsigned long milisUltimaJanela = 0;
 static double tempReferenciaJanela = 0;
 const unsigned long TEMPO_JANELA_TERMICA = 30000;
+estadoSistema estadoSistemaAtual;
+estadoForno estadoFornoAtual;
+estadoForno estadoFornoAnterior;
 
-void definirEstadoSistema() {
+estadoSistema definirEstadoSistema() {
 
-  switch (dados.estadoAtual) {
+  switch (estadoSistemaAtual) {
 
     case INICIANDO:
 
-      dados.estadoAtual = SEGURO;
+      estadoSistemaAtual = SEGURO;
 
       break;
 
@@ -24,13 +27,13 @@ void definirEstadoSistema() {
 
       if (dados.TEMP_ATUAL >= TEMP_ALERTA_ENTRADA) {
 
-        dados.estadoAtual = ALERTA;
+        estadoSistemaAtual = ALERTA;
 
       }
 
       if (dados.TEMP_EXT_ATUAL >= TEMP_EXT_MAXIMA) {
 
-        dados.estadoAtual = ALERTA;
+        estadoSistemaAtual = ALERTA;
 
       }
 
@@ -40,11 +43,11 @@ void definirEstadoSistema() {
 
       if (dados.TEMP_ATUAL >= TEMP_CRITICA_ENTRADA) {
 
-        dados.estadoAtual = CRITICO;
+        estadoSistemaAtual = CRITICO;
 
       }
       else if (dados.TEMP_ATUAL < TEMP_ALERTA_SAIDA && dados.TEMP_EXT_ATUAL < TEMP_EXT_MAXIMA) {
-        dados.estadoAtual = SEGURO;
+        estadoSistemaAtual = SEGURO;
       }
 
       break;
@@ -53,7 +56,7 @@ void definirEstadoSistema() {
 
       if (dados.TEMP_ATUAL < TEMP_CRITICA_SAIDA) {
 
-        dados.estadoAtual = ALERTA;
+        estadoSistemaAtual = ALERTA;
 
       }
 
@@ -63,24 +66,27 @@ void definirEstadoSistema() {
 
       if (temperaturaValida()) {
 
-        dados.estadoAtual = SEGURO;
+        estadoSistemaAtual = SEGURO;
 
       }
 
       break;
   }
+
+  return estadoSistemaAtual;
 }
 
-void definirEstadoForno() {
-  dados.estadoFornoAnterior = dados.estadoFornoAtual;
+estadoForno definirEstadoForno() {
+  estadoFornoAnterior = estadoFornoAtual;
 
   // 1. Estado Desligado: avaliado de forma imediata
   if (dados.TEMP_ATUAL < 60) {
-    dados.estadoFornoAtual = FORNO_DESLIGADO;
+    estadoFornoAtual = FORNO_DESLIGADO;
     dados.sessaoIniciada = false;
     // Reseta a referência para evitar saltos bruscos caso o forno volte a ligar
-    tempReferenciaJanela = dados.TEMP_ATUAL; 
-    return;
+    tempReferenciaJanela = dados.TEMP_ATUAL;
+
+    return estadoFornoAtual;
   }
 
   // 2. Inicializa a janela de referência na primeira execução válida
@@ -95,50 +101,22 @@ void definirEstadoForno() {
     
     // Compara a temperatura de agora com a de 30 segundos atrás
     if (dados.TEMP_ATUAL > tempReferenciaJanela + MARGEM_ESTABILIDADE) {
-      dados.estadoFornoAtual = FORNO_AQUECENDO;
+      estadoFornoAtual = FORNO_AQUECENDO;
       
     } else if (dados.TEMP_ATUAL < tempReferenciaJanela - MARGEM_ESTABILIDADE) {
-      dados.estadoFornoAtual = FORNO_ESFRIANDO;
+      estadoFornoAtual = FORNO_ESFRIANDO;
       
     } else {
-      dados.estadoFornoAtual = FORNO_ATIVO;
+      estadoFornoAtual = FORNO_ATIVO;
     }
 
     // 4. Salva a temperatura e o tempo atuais para a próxima janela
     tempReferenciaJanela = dados.TEMP_ATUAL;
     milisUltimaJanela = millis();
-  }
-}
 
-void atualizarEstadoSistema() {
-
-  if (millis() - dados.milisEstabilizarTermopar < 2000) {
-
-    dados.estadoAtual = INICIANDO;
-    return;
-
-  } else if (!temperaturaValida()) {
-
-    dados.estadoAtual = ERRO_SENSOR;
-    return;
-
+    return estadoFornoAtual;
   } else {
-    definirEstadoSistema();
-  }
-}
-
-void atualizarEstadoForno() {
-  if (millis() - dados.milisEstabilizarTermopar < 2000) {
-
-    dados.estadoFornoAtual = FORNO_DESLIGADO;
-    return;
-
-  } else if (!temperaturaValida()) {
-
-    dados.estadoFornoAtual = FORNO_DESLIGADO;
-    return;
-
-  } else {
-    definirEstadoForno();
+    // 5. Se a janela ainda não expirou, mantém o estado anterior
+    return estadoFornoAnterior;
   }
 }

@@ -3,5 +3,6 @@
 
 void alertas();
 void atualizarAlertas();
+void taskAlertas(void *parameter);
 
 #endif
