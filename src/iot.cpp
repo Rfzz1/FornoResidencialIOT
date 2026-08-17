@@ -14,6 +14,20 @@ static unsigned long milisEstabilizarWiFi = 0;
 static unsigned long tentativaNTP = 0;
 unsigned long ultimoTesteWiFi = 0;
 
+
+void taskConectividade(void *parameter) {
+    conectarWiFi();
+
+    for (;;) {
+
+        verificarWiFi();
+        estabilizarHoraLocal();
+        atualizarHorarioAlarme();
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+
+    }
+}
+
 void conectarWiFi() {
     WiFi.begin(ssid, pass);
 

@@ -251,7 +251,7 @@ int enviarRequisicaoHTTP(
 
     Serial.println("3");
 
-    bool ok = garantirLogin();
+    bool ok = garantirLogin(); 
 
     Serial.print("garantirLogin = ");
     Serial.println(ok);

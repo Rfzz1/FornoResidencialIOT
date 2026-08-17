@@ -73,7 +73,7 @@ void tratarEvento(eventoSistema evento) {
                 dados.sessaoCritico
             );
             break;
-        case ERRO_SENSOR_ENTRADA:
+        case ERRO_SENSOR_ENTRADA: 
             iniciarSessaoEstado(
                 dados.sessaoErroSensor
             );

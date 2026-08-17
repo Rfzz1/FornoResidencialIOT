@@ -9,5 +9,6 @@ void verificarHorarioAlarme();
 void atualizarHorarioAlarme();
 String obterHorarioFormatado();
 void verificarWiFi();
+void taskConectividade(void *parameter);
 
 #endif
