@@ -6,9 +6,9 @@
 void fazerLogin();
 bool iniciarSessao();
 void encerrarSessao();
-void enviarTemperatura();
+void enviarTemperatura(const String& estadoFornoTexto, double temperaturaAtual, double temperaturaUltima);
 void enviarEvento(String tipo);
-void enviarTelemetria();
+void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String& estadoSistema, const String& estadoForno, int tempoLigado);
 void atualizarSessao();
 
 String obterSerialNumber();
@@ -18,9 +18,7 @@ void inicializarBluetooth();
 void inicializarPreferences();
 void verificarEstadoDispositivo();
 void diagnosticoCompleto();
-void gerenciarEstadoOperacional();
 void verificarReiniciar();
-void sincronizarTemperaturas();
 void salvarSecretBluetooth(String recebidoDoTerminal);
 
 bool garantirLogin();
@@ -32,5 +30,7 @@ int enviarRequisicaoHTTP(
     String *response,
     int tentativa
 );
+
+void taskNuvem(void *parameter);
 
 #endif

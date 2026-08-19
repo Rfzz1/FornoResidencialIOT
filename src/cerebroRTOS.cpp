@@ -2,38 +2,98 @@
 #include "config.h"
 #include "sensores.h"
 #include "telemetria.h"
+#include "eventos.h"
 
 void taskCerebro(void *parameter) {
 
-    float temperaturaAtual = 0.0;
+    double temperaturaAtual;
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
     for (;;) {
 
-    xQueueReceive(temperaturaQueue, &temperaturaAtual, portMAX_DELAY);
+    //---- Temperatura ----
 
-    dados.ULTIMA_TEMP = dados.TEMP_ATUAL;
-    dados.TEMP_ATUAL = temperaturaAtual;
+        xQueueReceive(temperaturaQueue, &temperaturaAtual, portMAX_DELAY);
 
-    if (temperaturaValida()) {
-        Serial.printf("Temperatura atual: %.2f °C\n", dados.TEMP_ATUAL);
-    } else {
-        Serial.println("Leitura de temperatura inválida.");
-        continue; // Skip further processing if the temperature is invalid
-    }
+        dados.ULTIMA_TEMP = dados.TEMP_ATUAL;
+        dados.TEMP_ATUAL = temperaturaAtual;
 
-    xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
+        if (temperaturaValida()) {
+            Serial.printf("Temperatura atual: %.2f °C\n", dados.TEMP_ATUAL);
+        } else {
+            Serial.println("Leitura de temperatura inválida.");
+            continue; // Skip further processing if the temperature is invalid
+        }
 
-    dados.estadoFornoAnterior = dados.estadoFornoAtual;
-    dados.estadoFornoAtual = definirEstadoForno();
+        //---- Estado ----
 
-    xSemaphoreGive(mutexEstadoForno);
+        xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
 
-    xSemaphoreTake(mutexEstadoSistema, portMAX_DELAY);
+        dados.estadoFornoAnterior = dados.estadoFornoAtual;
+        dados.estadoFornoAtual = definirEstadoForno();
 
-    dados.estadoAtual = definirEstadoSistema();
+        xSemaphoreGive(mutexEstadoForno);
 
-    xSemaphoreGive(mutexEstadoSistema);
+        estadoSistema novoEstadoLido = definirEstadoSistema(); //Para onde o novo estado vai ir (futuro imediato)
+
+        //---- Eventos ----
+
+        if (novoEstadoLido != dados.estadoAtual) {
+            
+            String evento;
+
+            switch (novoEstadoLido) {
+                case SEGURO:
+
+                    //Se o novo estado lido estiver segureo e o estado atual for lido como 'ALERTA', quer dizer que entrou em alerta e assim segue para os outros estados
+                    if (dados.estadoAtual == ALERTA) {
+                        evento = "ALERTA_SAIDA";
+                    } else if (dados.estadoAtual == CRITICO) {
+                        evento = "CRITICO_SAIDA";
+                    } else if (dados.estadoAtual == ERRO_SENSOR) {
+                        evento = "ERRO_SENSOR_SAIDA";
+                    }
+                    break;
+                case ALERTA:
+                    if (dados.estadoAtual == SEGURO) {
+                        evento = "ALERTA_ENTRADA";
+                    } else if (dados.estadoAtual == CRITICO) {
+                        evento = "CRITICO_SAIDA";
+                    } else if (dados.estadoAtual == ERRO_SENSOR) {
+                        evento = "ERRO_SENSOR_SAIDA";
+                    }
+                    break;
+                case CRITICO:
+                    if (dados.estadoAtual == SEGURO) {
+                        evento = "CRITICO_ENTRADA";
+                    } else if (dados.estadoAtual == ALERTA) {
+                        evento = "ALERTA_SAIDA";
+                    } else if (dados.estadoAtual == ERRO_SENSOR) {
+                        evento = "ERRO_SENSOR_SAIDA";
+                    }
+                    break;
+                case ERRO_SENSOR:
+                    if (dados.estadoAtual == SEGURO) {
+                        evento = "ERRO_SENSOR_ENTRADA";
+                    } else if (dados.estadoAtual == ALERTA) {
+                        evento = "ALERTA_SAIDA";
+                    } else if (dados.estadoAtual == CRITICO) {
+                        evento = "CRITICO_SAIDA";
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            xQueueSend(eventosQueue, &evento, 0);
+            
+            xSemaphoreTake(mutexEstadoSistema, portMAX_DELAY);
+
+            dados.estadoAtual = novoEstadoLido; //Onde o estado do sistema está nesse momento (passado recente) - último registro
+
+            xSemaphoreGive(mutexEstadoSistema);
+
+        }
 
     }
 }

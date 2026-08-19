@@ -3,25 +3,22 @@
 #include "telemetria.h"
 #include "estados.h"
 #include "eventos.h"
-#include "logs.h"
+#include "logs.h" 
 #include "api.h"
 
 unsigned long ultimoTempoMudanca = 0;
 const unsigned long TEMPO_DEBOUNCE = 3000;
 
-static QueueHandle_t filaEventos = NULL;
+void taskEventos(void *parameter) {
 
-static void taskProcessarEventos(void *pvParameters) {
     eventoSistema evento;
-    while (1) {
-        // Dorme até chegar um evento na fila
-        if (xQueueReceive(filaEventos, &evento, portMAX_DELAY) == pdPASS) {
-            tratarEvento(evento);
-        }
+
+    for (;;) {
+    
+        xQueueReceive(eventosQueue, &evento, portMAX_DELAY);
+        tratarEvento(evento);
+
     }
-}
-void inicializarEventos() {
-    Serial.println("Sistema de eventos inicializado.");
 }
 
 void tratarEvento(eventoSistema evento) {
@@ -98,36 +95,6 @@ void tratarEvento(eventoSistema evento) {
     }
 }
 
-void processarEventos() {
-
-    if (entrouEstado(ALERTA)) {
-        tratarEvento(ALERTA_ENTRADA);
-    }
-
-    if (saiuEstado(ALERTA)) {
-        tratarEvento(ALERTA_SAIDA);
-    }
-
-    if (entrouEstado(CRITICO)) {
-        tratarEvento(CRITICO_ENTRADA);
-    }
-
-    if (saiuEstado(CRITICO)) {
-        tratarEvento(CRITICO_SAIDA);
-    }
-
-    if (entrouEstado(ERRO_SENSOR)) {
-        tratarEvento(ERRO_SENSOR_ENTRADA);
-    }
-
-    if (saiuEstado(ERRO_SENSOR)) {
-        tratarEvento(ERRO_SENSOR_SAIDA);
-    }
-
-    // Atualiza o estado anterior DEPOIS de todos os tratamentos
-    dados.estadoAnterior = dados.estadoAtual;
-}
-
 void iniciarSessaoEstado(SessaoEstado &sessao) {
     sessao.inicio = millis();
 }
@@ -158,33 +125,4 @@ void exibirDuracaoEstado(estadoSistema estado, const SessaoEstado &sessao) {
 
         sessao.horas
     );
-}
-
-bool entrouEstado(estadoSistema estado) {
-
-    return (
-        dados.estadoAtual == estado &&
-        dados.estadoAnterior != estado
-    );
-}
-
-bool saiuEstado(estadoSistema estado) {
-
-    return (
-        dados.estadoAnterior == estado &&
-        dados.estadoAtual != estado
-    );
-}
-
-void atualizarEstadoLogico(estadoSistema novoEstadoLido) {
-    if (novoEstadoLido != dados.estadoAtual) {
-        if (millis() - ultimoTempoMudanca > TEMPO_DEBOUNCE) {
-            dados.estadoAnterior = dados.estadoAtual;
-            dados.estadoAtual = novoEstadoLido;
-            ultimoTempoMudanca = millis();
-        }
-    } else {
-        // Reseta o tempo se a leitura voltou ao normal antes de confirmar
-        ultimoTempoMudanca = millis();
-    }
 }

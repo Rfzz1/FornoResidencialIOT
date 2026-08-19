@@ -7,11 +7,11 @@
 
 static unsigned long ultimaLeituraSensor = 0;
 static unsigned long ultimoEnvioTemperatura = 0;
-static float leituraBruta = 0;
+static double leituraBruta = 0;
 
 const int TAM_MEDIA = 10;
 
-float bufferTemperaturas[TAM_MEDIA];
+double bufferTemperaturas[TAM_MEDIA];
 
 int indiceBuffer = 0;
 
@@ -23,7 +23,7 @@ void taskTemperatura(void *parameter) {
 
   for (;;) {
 
-    float temperaturaAtual = lerTemperatura();
+    double temperaturaAtual = lerTemperatura();
     xQueueSend(temperaturaQueue, &temperaturaAtual, 0);
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -65,7 +65,7 @@ float lerTemperatura() {
 
     }
 
-    float temperaturaAtual = soma / quantidade;
+    double temperaturaAtual = soma / quantidade;
 
     Serial.printf("Leitura bruta do sensor: %.2f °C\n", temperaturaAtual);
     return temperaturaAtual;

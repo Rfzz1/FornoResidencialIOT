@@ -39,6 +39,42 @@ static bool tentandoRecuperarSessao = false;
 static int tentativasSessao = 0;
 
 
+//Task para enviar telemetria periodicamente
+void taskNuvem(void *parameter) {
+
+    double temperaturaAtualQueue;
+    double temperaturaUltimaQueue;
+    String estadoSistemaTexto = "";
+    String estadoFornoTexto = "";
+    uint32_t tempoLigadoMin = 0;
+
+    String evento;
+
+
+    for (;;) {
+        
+        xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
+            temperaturaAtualQueue = dados.TEMP_ATUAL;
+            temperaturaUltimaQueue = dados.ULTIMA_TEMP;
+            estadoSistemaTexto = obterEstadoSistemaTexto(dados.estadoAtual);
+            estadoFornoTexto = obterEstadoFornoTexto();
+            tempoLigadoMin = dados.tempoLigadoMinutos;
+        xSemaphoreGive(mutexTelemetria);
+
+        enviarTelemetria(temperaturaAtualQueue, temperaturaUltimaQueue, estadoSistemaTexto, estadoFornoTexto, tempoLigadoMin);
+
+        enviarTemperatura(estadoFornoTexto, temperaturaAtualQueue, temperaturaUltimaQueue);
+
+        if (xQueueReceive(eventosQueue, &evento, pdMS_TO_TICKS(1000)) == pdTRUE) {
+            enviarEvento(evento);
+        }
+
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+    }
+}
+
+
 void diagnosticoCompleto() {
 
     Serial.printf("Heap livre: %d bytes\n", ESP.getFreeHeap());
@@ -472,10 +508,10 @@ void atualizarSessao() {
 // ENVIAR TELEMETRIA
 // ==========================
 
-void enviarTelemetria() {
+void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String& estadoSistema, const String& estadoForno, int tempoLigado) {
 
     if (sessaoId.isEmpty()) {
-        if (dados.estadoFornoAtual == FORNO_DESLIGADO) {
+        if (estadoForno == "FORNO_DESLIGADO") {
             return; 
         }
         // Se estiver ligado mas perdeu a sessão (ex: reiniciou), tenta recuperar
@@ -493,11 +529,11 @@ void enviarTelemetria() {
         return;
     }
 
-    doc["temperaturaAtual"] = dados.TEMP_ATUAL;
-    doc["temperaturaUltima"] = dados.ULTIMA_TEMP;
-    doc["estadoSistema"] = obterEstadoSistemaTexto(dados.estadoAtual);
-    doc["estadoForno"] = obterEstadoFornoTexto();
-    doc["tempoLigadoMinutos"] = dados.tempoLigadoMinutos;
+    doc["temperaturaAtual"] = temperaturaAtual;
+    doc["temperaturaUltima"] = temperaturaUltima;
+    doc["estadoSistema"] = estadoSistema;
+    doc["estadoForno"] = estadoForno;
+    doc["tempoLigadoMinutos"] = tempoLigado;
 
 
     serializeJson(doc, body);
@@ -520,10 +556,10 @@ void enviarTelemetria() {
 // TEMPERATURA
 // ==========================
 
-void enviarTemperatura() {
+void enviarTemperatura(const String& estadoFornoTexto, double temperaturaAtual, double temperaturaUltima) {
 
     if (sessaoId.isEmpty()) {
-        if (dados.estadoFornoAtual == FORNO_DESLIGADO) {
+        if (estadoFornoTexto == "FORNO_DESLIGADO") {
             return; 
         }
         if (!iniciarSessao()) {
@@ -555,10 +591,8 @@ Serial.print("Sessao: ");
 Serial.println(sessaoId);
 
     doc["sessaoId"] = sessaoId;
-    doc["temperaturaAtual"] = dados.TEMP_ATUAL;
-    doc["temperaturaUltima"] = dados.ULTIMA_TEMP;
-    doc["temperaturaExterna"] = dados.TEMP_EXT_ATUAL;
-
+    doc["temperaturaAtual"] = temperaturaAtual;
+    doc["temperaturaUltima"] = temperaturaUltima;
 
     serializeJson(doc, body);
 
@@ -761,45 +795,6 @@ void verificarEstadoDispositivo() {
         diagnosticoCompleto();
         fazerLogin();
     }
-}
- 
-
-void gerenciarEstadoOperacional() {
-
-    processarBluetooth();
-
-    if (!dados.espConfigurado) {
-        return;
-    }
-
-    verificarWiFi();
-
-    if (tokenJWT.isEmpty() && WiFi.status() == WL_CONNECTED) {
-        fazerLogin();
-    }
-
-    atualizarSensores();
-    atualizarEstadoSistema();
-    atualizarEstadoForno();
-
-    processarEventos();
-
-    tratarSessao();
-
-    atualizarAlertas();
-    atualizarHorarioAlarme();
-    atualizarEnvioLogs();
-}
-
-// ==========================
-// TEMPERATURAS
-// ==========================
-
-void sincronizarTemperaturas() {
-    temperaturaAtual = dados.TEMP_ATUAL;
-    temperaturaUltima = dados.ULTIMA_TEMP;
-    enviarTemperatura();
-    enviarTelemetria();
 }
 
 // ==========================

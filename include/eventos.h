@@ -14,16 +14,10 @@
         ERRO_SENSOR_ENTRADA,
         ERRO_SENSOR_SAIDA
     };
-
-    bool entrouEstado(estadoSistema estado);
-    bool saiuEstado(estadoSistema estado);
     void exibirDuracaoEstado(estadoSistema estado,const SessaoEstado &sessao);
     void iniciarSessaoEstado(SessaoEstado &sessao);
     void finalizarSessaoEstado(SessaoEstado &sessao);
-    void adicionarEvento(eventoSistema evento);
-    void processarEventos();
     void tratarEvento(eventoSistema evento);
-    void atualizarEstadoLogico(estadoSistema novoEstadoLido);
-    void inicializarEventos();
+    void taskEventos(void *parameter);
 
 #endif

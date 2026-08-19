@@ -8,10 +8,12 @@
   #include "telemetria.h"
   #include "iot.h"
   #include "ws.h"
-
+ 
   QueueHandle_t temperaturaQueue;
+  QueueHandle_t eventosQueue;
   SemaphoreHandle_t mutexEstadoForno;
   SemaphoreHandle_t mutexEstadoSistema;
+  SemaphoreHandle_t mutexTelemetria;
 
   void setup() {
 
@@ -21,9 +23,11 @@
 
     //Filas RTOS
 
-    temperaturaQueue = xQueueCreate(1, sizeof(float));
+    temperaturaQueue = xQueueCreate(10, sizeof(float));
+    eventosQueue = xQueueCreate(10, sizeof(String));
     mutexEstadoSistema = xSemaphoreCreateMutex();
     mutexEstadoForno = xSemaphoreCreateMutex();
+    mutexTelemetria = xSemaphoreCreateMutex();
     
 
     inicializarBluetooth();
@@ -66,7 +70,7 @@
     }
 
     verificarReiniciar();
-    gerenciarEstadoOperacional();
+    // gerenciarEstadoOperacional();
 
     if (dados.espConfigurado &&
         WiFi.status() == WL_CONNECTED) {
