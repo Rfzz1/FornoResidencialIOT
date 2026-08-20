@@ -44,6 +44,9 @@
         uint32_t HoraAtual = 0;
         uint32_t MinutoAtual = 0;
         uint32_t SegundoAtual = 0;
+
+        String serialNumber;
+        String deviceSecret;
     };
 
 extern Telemetria dados;

@@ -3,7 +3,6 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <WiFi.h>
-#include "BluetoothSerial.h"
 
 #include "config.h"
 #include "telemetria.h"
@@ -14,24 +13,18 @@
 #include "sensores.h"
 #include "api.h"
 #include "utils.h"
+#include "bluetooth.h"
 
 // ==========================
 // OBJETOS GLOBAIS
 // ==========================
 
-BluetoothSerial SerialBT;
-Preferences preferences;
-
 String tokenJWT = "";
 String sessaoId = "";
-String serialNumber;
-String deviceSecret;
+Preferences preferences;
 
 double temperaturaAtual = 0;
 double temperaturaUltima = 0;
-
-static bool aguardandoReinicio = false;
-static unsigned long tempoInicioReinicio = 0;
 
 // controle de recuperação de sessão
 static bool tentandoRecuperarSessao = false;
@@ -187,13 +180,13 @@ void fazerLogin() {
     http.addHeader("Content-Type", "application/json");
 
     // Limpeza da secret (aqui está o corte dos 36 caracteres para garantir)
-    String secretLimpa = deviceSecret;
+    String secretLimpa = dados.deviceSecret;
     secretLimpa.trim(); 
     if (secretLimpa.length() > 36) {
         secretLimpa = secretLimpa.substring(0, 36);
     }
     doc["secret"] = secretLimpa;
-    doc["serialNumber"] = serialNumber;
+    doc["serialNumber"] = dados.serialNumber;
 
     String jsonOutput;
 
@@ -225,7 +218,7 @@ void salvarSecretBluetooth(String recebidoDoTerminal) {
     }
     // Salva a versão limpa nas Preferences
     preferences.putString("secret", secretLimpa); 
-    deviceSecret = secretLimpa;
+    dados.deviceSecret = secretLimpa;
     Serial.println("Nova secret salva com sucesso!");
 }
 
@@ -648,102 +641,6 @@ void enviarEvento(String tipo) {
     Serial.printf("Evento HTTP Código: %d\n", code);
 }
 
-// ==========================
-// BLUETOOTH
-// ==========================
-
-void inicializarBluetooth() {
-    SerialBT.begin("MonitorForno2");
-    Serial.println("Bluetooth iniciado.");
-}
-
-void inicializarPreferences() {
-
-    Serial.println("Abrindo Preferences...");
-
-    if (!preferences.begin("forno", false)) {
-        Serial.println("Falha ao iniciar Preferences");
-        return;
-    }
-
-    serialNumber = preferences.getString("serialNumber", "");
-    deviceSecret = preferences.getString("secret", "");
-
-    Serial.println("Secret salva:");
-    Serial.println(deviceSecret);
-
-    if (serialNumber.isEmpty()) {
-        serialNumber = WiFi.macAddress();
-        serialNumber.replace(":", "");
-        preferences.putString("serialNumber", serialNumber);
-    }
-
-
-    Serial.println("Serial: " + serialNumber);
-}
-
-// ==========================
-// BLUETOOTH PROCESS
-// ==========================
-
-void processarBluetooth() {
-
-    static bool conectado = false;
-
-    if (SerialBT.hasClient() && !conectado) {
-        conectado = true;
-        Serial.println("Bluetooth conectado");
-    }
-
-    if (!SerialBT.hasClient()) {
-        conectado = false;
-        return;
-    }
-
-    if (!SerialBT.available())
-        return;
-
-    String cmd = SerialBT.readStringUntil('\n');
-    cmd.trim();
-
-    if (cmd == "GET_SERIAL") {
-
-        String s = WiFi.macAddress();
-        s.replace(":", "");
-        SerialBT.println(s);
-        return;
-    }
-
-    if (cmd.startsWith("SET_SECRET:")) {
-
-        deviceSecret = cmd.substring(11);
-        preferences.putString("secret", deviceSecret);
-
-        SerialBT.println("OK");
-
-        tempoInicioReinicio = millis();
-        aguardandoReinicio = true;
-    }
-
-    if (cmd == "CLEAR_SECRET") {
-        preferences.remove("secret");
-        SerialBT.println("SECRET_REMOVIDO");
-        delay(1000);
-        ESP.restart();
-    }
-}
-
-// ==========================
-// CONTROLE
-// ==========================
-
-void verificarReiniciar() {
-    if (aguardandoReinicio &&
-        millis() - tempoInicioReinicio >= 2000) {
-        ESP.restart();
-    }
-}
-
 void verificarEstadoDispositivo() {
 
     conectarWiFi();
@@ -758,7 +655,7 @@ void verificarEstadoDispositivo() {
         http.begin(client, String(API_BASE_URL) + "/v1/fornos/auto-provisionar"); 
         http.addHeader("Content-Type", "application/json");
 
-        doc["serialNumber"] = serialNumber;
+        doc["serialNumber"] = dados.serialNumber;
 
         String jsonOutput;
         serializeJson(doc, jsonOutput);
@@ -777,7 +674,7 @@ void verificarEstadoDispositivo() {
             String secretRecebida = resDoc["secret"].as<String>(); // Extrai a secret do JSON
             preferences.putString("secret", secretRecebida); // Salva na memória não-volátil
 
-            deviceSecret = secretRecebida; // Atualiza variável global com a nova secret
+            dados.deviceSecret = secretRecebida; // Atualiza variável global com a nova secret
             dados.espConfigurado = true;
 
             Serial.println("Auto-provisionamento concluído com sucesso!");
@@ -801,12 +698,4 @@ void verificarEstadoDispositivo() {
         diagnosticoCompleto();
         fazerLogin();
     }
-}
-
-// ==========================
-// SERIAL
-// ==========================
-
-String obterSerialNumber() {
-    return serialNumber;
 }
