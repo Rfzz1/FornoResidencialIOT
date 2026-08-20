@@ -2,7 +2,7 @@
 #include "config.h"
 #include "sensores.h"
 #include "telemetria.h"
-#include "eventos.h"
+#include "utils.h"
 
 void taskCerebro(void *parameter) {
 
@@ -35,53 +35,52 @@ void taskCerebro(void *parameter) {
         xSemaphoreGive(mutexEstadoForno);
 
         estadoSistema novoEstadoLido = definirEstadoSistema(); //Para onde o novo estado vai ir (futuro imediato)
+        estadoForno novoEstadoFornoLido = definirEstadoForno(); //Para onde o novo estado do forno vai ir (futuro imediato)
 
         //---- Eventos ----
 
         if (novoEstadoLido != dados.estadoAtual) {
             
-            String evento;
+            eventoSistema evento;
 
             switch (novoEstadoLido) {
                 case SEGURO:
 
                     //Se o novo estado lido estiver segureo e o estado atual for lido como 'ALERTA', quer dizer que entrou em alerta e assim segue para os outros estados
                     if (dados.estadoAtual == ALERTA) {
-                        evento = "ALERTA_SAIDA";
+                        evento = ALERTA_SAIDA;
                     } else if (dados.estadoAtual == CRITICO) {
-                        evento = "CRITICO_SAIDA";
+                        evento = CRITICO_SAIDA;
                     } else if (dados.estadoAtual == ERRO_SENSOR) {
-                        evento = "ERRO_SENSOR_SAIDA";
+                        evento = ERRO_SENSOR_SAIDA;
                     }
                     break;
                 case ALERTA:
                     if (dados.estadoAtual == SEGURO) {
-                        evento = "ALERTA_ENTRADA";
+                        evento = ALERTA_ENTRADA;
                     } else if (dados.estadoAtual == CRITICO) {
-                        evento = "CRITICO_SAIDA";
+                        evento = CRITICO_SAIDA;
                     } else if (dados.estadoAtual == ERRO_SENSOR) {
-                        evento = "ERRO_SENSOR_SAIDA";
+                        evento = ERRO_SENSOR_SAIDA;
                     }
                     break;
                 case CRITICO:
                     if (dados.estadoAtual == SEGURO) {
-                        evento = "CRITICO_ENTRADA";
+                        evento = CRITICO_ENTRADA;
                     } else if (dados.estadoAtual == ALERTA) {
-                        evento = "ALERTA_SAIDA";
+                        evento = ALERTA_SAIDA;
                     } else if (dados.estadoAtual == ERRO_SENSOR) {
-                        evento = "ERRO_SENSOR_SAIDA";
+                        evento = ERRO_SENSOR_SAIDA;
                     }
                     break;
                 case ERRO_SENSOR:
                     if (dados.estadoAtual == SEGURO) {
-                        evento = "ERRO_SENSOR_ENTRADA";
+                        evento = ERRO_SENSOR_ENTRADA;
                     } else if (dados.estadoAtual == ALERTA) {
-                        evento = "ALERTA_SAIDA";
+                        evento = ALERTA_SAIDA;
                     } else if (dados.estadoAtual == CRITICO) {
-                        evento = "CRITICO_SAIDA";
+                        evento = CRITICO_SAIDA;
                     }
-                    break;
-                default:
                     break;
             }
 
@@ -89,11 +88,39 @@ void taskCerebro(void *parameter) {
             
             xSemaphoreTake(mutexEstadoSistema, portMAX_DELAY);
 
-            dados.estadoAtual = novoEstadoLido; //Onde o estado do sistema está nesse momento (passado recente) - último registro
+            dados.estadoAtual = novoEstadoLido; //Onde o estado do sistema está nesse momento (passado recente) - último registro do estado do sistema
 
             xSemaphoreGive(mutexEstadoSistema);
 
         }
 
+        if (novoEstadoFornoLido != dados.estadoFornoAtual) {
+            
+            estadoForno eventoForno;
+
+            switch (novoEstadoFornoLido) {
+                case FORNO_DESLIGADO:
+                    eventoForno = FORNO_DESLIGADO;
+                    break;
+                case FORNO_AQUECENDO:
+                    eventoForno = FORNO_AQUECENDO;
+                    break;
+                case FORNO_ATIVO:
+                    eventoForno = FORNO_ATIVO;
+                    break;
+                case FORNO_ESFRIANDO:
+                    eventoForno = FORNO_ESFRIANDO;
+                    break;
+            }
+
+            xQueueSend(eventosFornoQueue, &eventoForno, 0);
+
+            xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
+
+            dados.estadoFornoAtual = novoEstadoFornoLido; //Onde o estado do forno está nesse momento (passado recente) - último registro
+
+            xSemaphoreGive(mutexEstadoForno);
+
     }
+}
 }

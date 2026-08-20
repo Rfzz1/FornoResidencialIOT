@@ -59,7 +59,7 @@ void buzzerCritico() {
 
 }
 
-void atualizarBuzzer() {
+void atualizarBuzzer(estadoSistema estadoAtual) {
 
   if (dados.estadoAtual != CRITICO && dados.estadoAtual != ALERTA && dados.estadoAtual != ERRO_SENSOR) {
     dados.buzzerMutado = false;
@@ -70,7 +70,7 @@ void atualizarBuzzer() {
     return;
   }
 
-  switch (dados.estadoAtual) {
+  switch (estadoAtual) {
 
     case CRITICO:
 

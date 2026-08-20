@@ -62,9 +62,9 @@ void piscarLedInicializacao() {
   }
 }
 
-void atualizarLEDs() {
+void atualizarLEDs(estadoSistema estadoAtual) {
 
-  switch (dados.estadoAtual) {
+  switch (estadoAtual) {
 
     case INICIANDO:
 

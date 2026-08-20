@@ -11,6 +11,7 @@
  
   QueueHandle_t temperaturaQueue;
   QueueHandle_t eventosQueue;
+  QueueHandle_t eventosFornoQueue;
   SemaphoreHandle_t mutexEstadoForno;
   SemaphoreHandle_t mutexEstadoSistema;
   SemaphoreHandle_t mutexTelemetria;
@@ -23,8 +24,9 @@
 
     //Filas RTOS
 
-    temperaturaQueue = xQueueCreate(10, sizeof(float));
-    eventosQueue = xQueueCreate(10, sizeof(String));
+    temperaturaQueue = xQueueCreate(1, sizeof(float));
+    eventosQueue = xQueueCreate(1, sizeof(String));
+    eventosFornoQueue = xQueueCreate(1, sizeof(String));
     mutexEstadoSistema = xSemaphoreCreateMutex();
     mutexEstadoForno = xSemaphoreCreateMutex();
     mutexTelemetria = xSemaphoreCreateMutex();
@@ -78,8 +80,5 @@
         estabilizarHoraLocal();
         processarWebSocket();
     }
-
-    atualizarLEDs();
-    atualizarBuzzer();
 
   }

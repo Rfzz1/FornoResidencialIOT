@@ -2,7 +2,6 @@
 #include <WiFi.h>
 #include "config.h"
 #include "iot.h"
-#include "logs.h"
 #include <time.h>
 #include "telemetria.h"
 

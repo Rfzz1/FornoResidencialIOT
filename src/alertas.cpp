@@ -25,9 +25,9 @@ void taskAlertas(void *parameter) {
     xSemaphoreGive(mutexEstadoSistema);
     
     alertas();
+    atualizarBuzzer(estadoSistemaAtual);
+    atualizarLEDs(estadoSistemaAtual);
 
-    atualizarBuzzer();
-    atualizarLEDs();
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
   }

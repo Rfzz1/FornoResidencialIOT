@@ -1,6 +1,6 @@
 #ifndef BUZZER_H
 #define BUZZER_H
 
-void atualizarBuzzer();
+void atualizarBuzzer(estadoSistema estadoAtual);
 
 #endif

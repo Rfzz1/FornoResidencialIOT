@@ -4,18 +4,6 @@
     #include "config.h"
     #include "estados.h"
 
-    struct SessaoEstado {
-
-        unsigned long inicio = 0;
-
-        unsigned long duracao = 0;
-
-        uint32_t segundos = 0;
-
-        uint32_t minutos = 0;
-
-        uint32_t horas = 0;
-    };
 
     struct Telemetria {
         bool estadoPisca = false;
@@ -42,10 +30,6 @@
 
         estadoForno estadoFornoAtual = FORNO_DESLIGADO;
         estadoForno estadoFornoAnterior = FORNO_DESLIGADO;
-
-        SessaoEstado sessaoAlerta;
-        SessaoEstado sessaoCritico;
-        SessaoEstado sessaoErroSensor;
 
         uint32_t HoraInicio = 0;
         uint32_t MinutoInicio = 0;

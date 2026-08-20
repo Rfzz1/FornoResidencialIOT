@@ -11,10 +11,9 @@
 #include "estados.h"
 #include "sessao.h"
 #include "alertas.h"
-#include "logs.h"
-#include "eventos.h"
 #include "sensores.h"
 #include "api.h"
+#include "utils.h"
 
 // ==========================
 // OBJETOS GLOBAIS
@@ -38,7 +37,6 @@ static unsigned long tempoInicioReinicio = 0;
 static bool tentandoRecuperarSessao = false;
 static int tentativasSessao = 0;
 
-
 //Task para enviar telemetria periodicamente
 void taskNuvem(void *parameter) {
 
@@ -48,8 +46,8 @@ void taskNuvem(void *parameter) {
     String estadoFornoTexto = "";
     uint32_t tempoLigadoMin = 0;
 
-    String evento;
-
+    eventoSistema evento;
+    estadoForno eventoForno;
 
     for (;;) {
         
@@ -57,7 +55,7 @@ void taskNuvem(void *parameter) {
             temperaturaAtualQueue = dados.TEMP_ATUAL;
             temperaturaUltimaQueue = dados.ULTIMA_TEMP;
             estadoSistemaTexto = obterEstadoSistemaTexto(dados.estadoAtual);
-            estadoFornoTexto = obterEstadoFornoTexto();
+            estadoFornoTexto = obterEstadoFornoTexto(dados.estadoFornoAtual);
             tempoLigadoMin = dados.tempoLigadoMinutos;
         xSemaphoreGive(mutexTelemetria);
 
@@ -66,7 +64,15 @@ void taskNuvem(void *parameter) {
         enviarTemperatura(estadoFornoTexto, temperaturaAtualQueue, temperaturaUltimaQueue);
 
         if (xQueueReceive(eventosQueue, &evento, pdMS_TO_TICKS(1000)) == pdTRUE) {
-            enviarEvento(evento);
+            enviarEvento(obterEventoSistemaTexto(evento));
+        }
+
+        if (xQueueReceive(eventosFornoQueue, &eventoForno, pdMS_TO_TICKS(1000)) == pdTRUE) {
+            enviarEvento(obterEstadoFornoTexto(eventoForno));
+            
+            if (eventoForno == FORNO_DESLIGADO) {
+                encerrarSessao();
+            }
         }
 
         vTaskDelay(5000 / portTICK_PERIOD_MS);
@@ -456,7 +462,7 @@ void encerrarSessao() {
     JsonDocument doc;
 
     doc["estadoSistemaFinal"] = obterEstadoSistemaTexto(dados.estadoAtual);
-    doc["estadoFornoFinal"] = obterEstadoFornoTexto();
+    doc["estadoFornoFinal"] = obterEstadoFornoTexto(dados.estadoFornoAtual);
 
     serializeJson(doc, body);
 
@@ -486,7 +492,7 @@ void atualizarSessao() {
     JsonDocument doc;
 
     doc["estadoSistemaAtual"] = obterEstadoSistemaTexto(dados.estadoAtual);
-    doc["estadoFornoAtual"] = obterEstadoFornoTexto();
+    doc["estadoFornoAtual"] = obterEstadoFornoTexto(dados.estadoFornoAtual);
 
     serializeJson(doc, body);
 

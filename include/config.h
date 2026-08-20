@@ -59,6 +59,7 @@ const int TAMANHO_FILA_EVENTOS = 10;
 
 extern QueueHandle_t temperaturaQueue;
 extern QueueHandle_t eventosQueue;
+extern QueueHandle_t eventosFornoQueue;
 extern SemaphoreHandle_t mutexEstadoForno;
 extern SemaphoreHandle_t mutexEstadoSistema;
 extern SemaphoreHandle_t mutexTelemetria;
