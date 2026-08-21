@@ -7,14 +7,39 @@ BluetoothSerial SerialBT;
 Preferences preferences;
 static bool aguardandoReinicio = false;
 static unsigned long tempoInicioReinicio = 0;
+static bool bluetoothConectado = false;
 
 void taskBluetooth(void *parameter) {
 
+    for (;;) {
+
+        if (bluetoothConectado == true) {
+            processarBluetooth();
+            verificarReiniciar();
+        }
+
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+
+}
+
+void salvarSecretBluetooth(String recebidoDoTerminal) {
+    String secretLimpa = "";
+    for (char c : recebidoDoTerminal) {
+        if (isAlphaNumeric(c) || c == '-') { 
+            secretLimpa += c;
+        }
+    }
+    // Salva a versão limpa nas Preferences
+    preferences.putString("secret", secretLimpa); 
+    dados.deviceSecret = secretLimpa;
+    Serial.println("Nova secret salva com sucesso!");
 }
 
 
 void inicializarBluetooth() {
     SerialBT.begin("MonitorForno2");
+    bluetoothConectado = true;
     Serial.println("Bluetooth iniciado.");
 }
 
@@ -104,7 +129,3 @@ void verificarReiniciar() {
         ESP.restart();
     }
 }
-
-// String obterSerialNumberBluetooth() {
-//     return dados.serialNumber;
-// }

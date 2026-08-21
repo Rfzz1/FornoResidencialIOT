@@ -11,15 +11,8 @@ void enviarEvento(String tipo);
 void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String& estadoSistema, const String& estadoForno, int tempoLigado);
 void atualizarSessao();
 
-String obterSerialNumber();
-
-void processarBluetooth();
-void inicializarBluetooth();
-void inicializarPreferences();
 void verificarEstadoDispositivo();
 void diagnosticoCompleto();
-void verificarReiniciar();
-void salvarSecretBluetooth(String recebidoDoTerminal);
 
 bool garantirLogin();
 

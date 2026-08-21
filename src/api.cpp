@@ -209,19 +209,6 @@ void fazerLogin() {
     http.end();
 }
 
-void salvarSecretBluetooth(String recebidoDoTerminal) {
-    String secretLimpa = "";
-    for (char c : recebidoDoTerminal) {
-        if (isAlphaNumeric(c) || c == '-') { 
-            secretLimpa += c;
-        }
-    }
-    // Salva a versão limpa nas Preferences
-    preferences.putString("secret", secretLimpa); 
-    dados.deviceSecret = secretLimpa;
-    Serial.println("Nova secret salva com sucesso!");
-}
-
 // ==========================
 // GARANTIA LOGIN
 // ==========================

@@ -39,7 +39,7 @@ void inicializarWebSocket() {
     Serial.println("[WS] Inicializando conexão segura...");
     wsClient.setInsecure(); // Ignora validação SSL
     wsClient.onMessage(onMessageCallback);
-    String urlCompleta = String(WS_URL) + obterSerialNumber(); // Função fictícia para obter o Serial Number do dispositivo
+    String urlCompleta = String(WS_URL) + dados.serialNumber; // Função fictícia para obter o Serial Number do dispositivo
     
     if (wsClient.connect(urlCompleta)) {
         Serial.println("[WS] Conectado com sucesso!");
@@ -60,7 +60,7 @@ void processarWebSocket() {
             ultimaTentativaWs = millis();
             Serial.println("[WS] Tentando reconectar...");
             
-            String urlCompleta = String(WS_URL) + obterSerialNumber();
+            String urlCompleta = String(WS_URL) + dados.serialNumber;
             wsClient.connect(urlCompleta);
         }
     }
