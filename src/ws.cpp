@@ -3,9 +3,8 @@
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include "api.h"
-
-#include "config.h"      // Para pegar a URL base, etc.
-#include "telemetria.h"  // Para acessar a variável 'dados'
+#include "config.h"      
+#include "telemetria.h"  
 
 using namespace websockets;
 WebsocketsClient wsClient;
@@ -26,8 +25,11 @@ void onMessageCallback(WebsocketsMessage message) {
         if (acao && strcmp(acao, "MUTE") == 0) {
             Serial.println("[WS] Comando MUTE recebido!");
             
-            // Em vez de mexer no hardware aqui, mudamos o ESTADO na telemetria
-            dados.buzzerMutado = true; 
+            // Protegendo a alteração da variável global com o Mutex
+            if (xSemaphoreTake(mutexEstadoSistema, portMAX_DELAY) == pdTRUE) {
+                dados.buzzerMutado = true; 
+                xSemaphoreGive(mutexEstadoSistema);
+            }
         }
     } else {
         Serial.print("[WS] Erro no JSON: ");
@@ -39,7 +41,7 @@ void inicializarWebSocket() {
     Serial.println("[WS] Inicializando conexão segura...");
     wsClient.setInsecure(); // Ignora validação SSL
     wsClient.onMessage(onMessageCallback);
-    String urlCompleta = String(WS_URL) + dados.serialNumber; // Função fictícia para obter o Serial Number do dispositivo
+    String urlCompleta = String(WS_URL) + dados.serialNumber; 
     
     if (wsClient.connect(urlCompleta)) {
         Serial.println("[WS] Conectado com sucesso!");

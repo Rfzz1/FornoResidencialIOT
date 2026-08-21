@@ -2,8 +2,6 @@
   #include <ArduinoJson.h>
   #include "config.h"
   #include "sensores.h"
-  #include "leds.h"
-  #include "buzzer.h"
   #include "api.h"
   #include "estados.h"
   #include "telemetria.h"
@@ -14,6 +12,8 @@
   #include "alertas.h"
   #include "api.h"
   #include "bluetooth.h"
+
+  //Filas e mutaxes
  
   QueueHandle_t temperaturaQueue;
   QueueHandle_t eventosQueue;
@@ -21,11 +21,16 @@
   SemaphoreHandle_t mutexEstadoForno;
   SemaphoreHandle_t mutexEstadoSistema;
   SemaphoreHandle_t mutexTelemetria;
+  SemaphoreHandle_t mutexWebSocket;
 
   void setup() {
 
+    //Inicialização da plca
+
     Serial.begin(115200);
     Serial.println("FIRMWARE V2.0");
+
+    //Bluetooth e provisionamento
 
     inicializarPreferences();
     verificarEstadoDispositivo();
@@ -38,6 +43,14 @@
     mutexEstadoSistema = xSemaphoreCreateMutex();
     mutexEstadoForno = xSemaphoreCreateMutex();
     mutexTelemetria = xSemaphoreCreateMutex();
+    mutexWebSocket = xSemaphoreCreateMutex();
+
+    //Definição de Pinos
+
+    pinMode(RED, OUTPUT);
+    pinMode(GREEN, OUTPUT);
+    pinMode(BLUE, OUTPUT);
+    pinMode(BUZZER, OUTPUT);
 
     //Tasks RTOS
 
@@ -47,14 +60,8 @@
     xTaskCreatePinnedToCore(taskNuvem, "Task API", 8192, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(taskTemperatura, "Task Leitura", 2048, NULL, 6, NULL, 0);
     xTaskCreatePinnedToCore(taskAlertas, "Task Alertas", 2048, NULL, 4, NULL, 0);
-
-    //Definição de Pinos
-
-    pinMode(RED, OUTPUT);
-    pinMode(GREEN, OUTPUT);
-    pinMode(BLUE, OUTPUT);
-    pinMode(BUZZER, OUTPUT);
-
+  
+    Serial.println("TASKS INICIADAS COM SUCESSO!");
   }
 
   void loop() {

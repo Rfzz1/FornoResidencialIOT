@@ -63,6 +63,7 @@ extern QueueHandle_t eventosFornoQueue;
 extern SemaphoreHandle_t mutexEstadoForno;
 extern SemaphoreHandle_t mutexEstadoSistema;
 extern SemaphoreHandle_t mutexTelemetria;
+extern SemaphoreHandle_t mutexWebSocket;
 
 // =====================================================
 // ENUMS
