@@ -22,6 +22,7 @@
 #include <WiFi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
+#include <Preferences.h>
 
 // =====================================================
 // SENSOR
@@ -64,6 +65,10 @@ extern SemaphoreHandle_t mutexEstadoForno;
 extern SemaphoreHandle_t mutexEstadoSistema;
 extern SemaphoreHandle_t mutexTelemetria;
 extern SemaphoreHandle_t mutexWebSocket;
+
+// Preferences
+
+extern Preferences preferences;
 
 // =====================================================
 // ENUMS

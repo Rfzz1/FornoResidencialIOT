@@ -23,6 +23,10 @@
   SemaphoreHandle_t mutexTelemetria;
   SemaphoreHandle_t mutexWebSocket;
 
+  //Preferences
+
+  Preferences preferences;
+
   void setup() {
 
     //Inicialização da plca

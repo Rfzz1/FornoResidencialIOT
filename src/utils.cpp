@@ -81,6 +81,9 @@ String obterEventoSistemaTexto(eventoSistema eventoSistema) {
 
         case ERRO_SENSOR_SAIDA:
             return "ERRO_SENSOR_SAIDA";
+            
+        default:
+            return "DESCONHECIDO";
 
     }
 

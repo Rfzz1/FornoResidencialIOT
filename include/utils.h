@@ -2,10 +2,7 @@
 #define UTILS_H 
 
 #include <Arduino.h>
-
-String obterEstadoSistemaTexto(estadoSistema estado);
-String obterEstadoFornoTexto(estadoForno estado);
-String obterEventoSistemaTexto(eventoSistema eventoSistema);
+#include "estados.h"
 
 enum eventoSistema {
         NENHUM,
@@ -27,5 +24,9 @@ enum eventoSistema {
         FORNO_ESFRIANDO_ENTRADA,
         FORNO_ESFRIANDO_SAIDA
     };
+
+String obterEstadoSistemaTexto(estadoSistema estado);
+String obterEstadoFornoTexto(estadoForno estado);
+String obterEventoSistemaTexto(eventoSistema eventoSistema);
 
 #endif

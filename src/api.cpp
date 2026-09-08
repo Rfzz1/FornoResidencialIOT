@@ -21,7 +21,6 @@
 
 String tokenJWT = "";
 String sessaoId = "";
-Preferences preferences;
 
 double temperaturaAtual = 0;
 double temperaturaUltima = 0;
@@ -57,12 +56,17 @@ void taskNuvem(void *parameter) {
         enviarTemperatura(estadoFornoTexto, temperaturaAtualQueue, temperaturaUltimaQueue);
 
         if (xQueueReceive(eventosQueue, &evento, pdMS_TO_TICKS(1000)) == pdTRUE) {
-            enviarEvento(obterEventoSistemaTexto(evento));
+
+            if (evento != NENHUM) {
+
+                enviarEvento(obterEventoSistemaTexto(evento));
+
+            }
         }
 
         if (xQueueReceive(eventosFornoQueue, &eventoForno, pdMS_TO_TICKS(1000)) == pdTRUE) {
             enviarEvento(obterEstadoFornoTexto(eventoForno));
-            
+    
             if (eventoForno == FORNO_DESLIGADO) {
                 encerrarSessao();
             }

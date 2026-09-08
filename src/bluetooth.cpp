@@ -2,9 +2,9 @@
 #include <Preferences.h>
 #include "BluetoothSerial.h"
 #include "telemetria.h"
+#include "config.h"
 
 BluetoothSerial SerialBT;
-Preferences preferences;
 static bool aguardandoReinicio = false;
 static unsigned long tempoInicioReinicio = 0;
 static bool bluetoothConectado = false;
