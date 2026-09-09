@@ -12,6 +12,7 @@
   #include "alertas.h"
   #include "api.h"
   #include "bluetooth.h"
+  #include "sessao.h"
 
   //Filas e mutaxes
  
@@ -64,6 +65,7 @@
     xTaskCreatePinnedToCore(taskNuvem, "Task API", 8192, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(taskTemperatura, "Task Leitura", 2048, NULL, 6, NULL, 0);
     xTaskCreatePinnedToCore(taskAlertas, "Task Alertas", 2048, NULL, 4, NULL, 0);
+    xTaskCreatePinnedToCore(taskSessao, "Task Sessao", 2048, NULL, 5, NULL, 0);
   
     Serial.println("TASKS INICIADAS COM SUCESSO!");
   }

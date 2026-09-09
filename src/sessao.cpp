@@ -9,6 +9,14 @@ static unsigned long tempoLigado = 0;
 static unsigned long milisUltimaAtualizacao = 0;
 static uint32_t ultimoSegundoExibido = 0;
 
+void taskSessao(void *parameter) {
+
+  for (;;) {
+      tratarSessao();
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+}
+
 void tratarSessao() {
 
   // 1. Detecta o INÍCIO da sessão (Ligou agora)

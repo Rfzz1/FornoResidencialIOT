@@ -31,6 +31,7 @@ void onMessageCallback(WebsocketsMessage message) {
                 xSemaphoreGive(mutexEstadoSistema);
             }
         }
+        
     } else {
         Serial.print("[WS] Erro no JSON: ");
         Serial.println(error.f_str());
