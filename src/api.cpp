@@ -37,6 +37,7 @@ void taskNuvem(void *parameter) {
     String estadoSistemaTexto = "";
     String estadoFornoTexto = "";
     uint32_t tempoLigadoMin = 0;
+    static estadoForno estadoFornoAnterior = dados.estadoFornoAnterior;
 
     eventoSistema evento;
     estadoForno eventoForno;
@@ -66,10 +67,17 @@ void taskNuvem(void *parameter) {
 
         if (xQueueReceive(eventosFornoQueue, &eventoForno, pdMS_TO_TICKS(1000)) == pdTRUE) {
             enviarEvento(obterEstadoFornoTexto(eventoForno));
-    
-            if (eventoForno == FORNO_DESLIGADO) {
+
+            if (estadoFornoAnterior == FORNO_DESLIGADO && eventoForno != FORNO_DESLIGADO) {
+                iniciarSessao();
+            }
+
+            if (eventoForno == FORNO_DESLIGADO && estadoFornoAnterior == FORNO_ESFRIANDO) {
+                Serial.println("Encerrar Sessão - HTTP");
                 encerrarSessao();
             }
+
+            estadoFornoAnterior = eventoForno;
         }
 
         vTaskDelay(5000 / portTICK_PERIOD_MS);
@@ -413,24 +421,24 @@ bool iniciarSessao() {
     Serial.print("Código recebido em iniciarSessao: ");
     Serial.println(code);
 
-if (code == 201) {
+    if (code == 201) {
 
-    JsonDocument doc;
+        JsonDocument doc;
 
-    DeserializationError erro = deserializeJson(doc, resposta);
+        DeserializationError erro = deserializeJson(doc, resposta);
 
-    if (erro) {
-        Serial.println(erro.c_str());
-        return false;
+        if (erro) {
+            Serial.println(erro.c_str());
+            return false;
+        }
+
+        sessaoId = doc["id"].as<String>();
+
+        Serial.println("Sessão criada:");
+        Serial.println(sessaoId);
+
+        return true;
     }
-
-    sessaoId = doc["id"].as<String>();
-
-    Serial.println("Sessão criada:");
-    Serial.println(sessaoId);
-
-    return true;
-}
 
 Serial.println("Falha ao criar sessão");
 return false;

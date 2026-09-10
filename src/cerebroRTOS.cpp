@@ -3,6 +3,7 @@
 #include "sensores.h"
 #include "telemetria.h"
 #include "utils.h"
+#include "sessao.h"
 
 void taskCerebro(void *parameter) {
 
@@ -24,15 +25,6 @@ void taskCerebro(void *parameter) {
             Serial.println("Leitura de temperatura inválida.");
             continue; // Skip further processing if the temperature is invalid
         }
-
-        //---- Estado ----
-
-        xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
-
-        dados.estadoFornoAnterior = dados.estadoFornoAtual;
-        dados.estadoFornoAtual = definirEstadoForno();
-
-        xSemaphoreGive(mutexEstadoForno);
 
         estadoSistema novoEstadoLido = definirEstadoSistema(); //Para onde o novo estado vai ir (futuro imediato)
         estadoForno novoEstadoFornoLido = definirEstadoForno(); //Para onde o novo estado do forno vai ir (futuro imediato)
@@ -95,32 +87,16 @@ void taskCerebro(void *parameter) {
         }
 
         if (novoEstadoFornoLido != dados.estadoFornoAtual) {
-            
-            estadoForno eventoForno;
 
-            switch (novoEstadoFornoLido) {
-                case FORNO_DESLIGADO:
-                    eventoForno = FORNO_DESLIGADO;
-                    break;
-                case FORNO_AQUECENDO:
-                    eventoForno = FORNO_AQUECENDO;
-                    break;
-                case FORNO_ATIVO:
-                    eventoForno = FORNO_ATIVO;
-                    break;
-                case FORNO_ESFRIANDO:
-                    eventoForno = FORNO_ESFRIANDO;
-                    break;
-            }
-
-            xQueueSend(eventosFornoQueue, &eventoForno, 0);
+            xQueueSend(eventosFornoQueue, &novoEstadoFornoLido, 0);
 
             xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
 
+            dados.estadoFornoAnterior = dados.estadoFornoAtual;
             dados.estadoFornoAtual = novoEstadoFornoLido; //Onde o estado do forno está nesse momento (passado recente) - último registro
 
             xSemaphoreGive(mutexEstadoForno);
 
+        }
     }
-}
 }
