@@ -2,6 +2,7 @@
   #include <ArduinoJson.h>
   #include <WebSocketsClient.h>
   #include "config.h"
+  #include "telemetria.h"
   #include "sensores.h"
   #include "api.h"
   #include "estados.h"  
@@ -42,7 +43,7 @@
 
     //Websockets
 
-    webSocket.beginSSL("monitoramentoforno.com.br", 443, "/v1/ws/fornos");
+    webSocket.beginSSL("monitoramentoforno.com.br", 443, "ws/" + dados.serialNumber + "/fornos");
     webSocket.onEvent(aoReceberEventoWebSocket);
     webSocket.setReconnectInterval(5000); // Tenta reconectar a cada 5 segundos
 
