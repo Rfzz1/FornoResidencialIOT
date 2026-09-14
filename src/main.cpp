@@ -42,7 +42,7 @@
 
     //Websockets
 
-    webSocket.beginSSL("monitoramentoforno.com.br", 443, "/v1/fornos/ws");
+    webSocket.beginSSL("monitoramentoforno.com.br", 443, "/v1/ws/fornos");
     webSocket.onEvent(aoReceberEventoWebSocket);
     webSocket.setReconnectInterval(5000); // Tenta reconectar a cada 5 segundos
 
