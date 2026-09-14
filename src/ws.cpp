@@ -12,7 +12,8 @@ WebsocketsClient wsClient;
 // Variável local para controle de reconexão
 unsigned long ultimaTentativaWs = 0;
 
-void onMessageCallback(WebsocketsMessage message) {
+void onMessageCallback(WebsocketsMessage message)
+{
     Serial.print("[WS] Mensagem recebida: ");
     Serial.println(message.data());
 
