@@ -56,7 +56,7 @@ void taskNuvem(void *parameter) {
 
         enviarTemperatura(estadoFornoTexto, temperaturaAtualQueue, temperaturaUltimaQueue);
 
-        if (xQueueReceive(eventosQueue, &evento, pdMS_TO_TICKS(1000)) == pdTRUE) {
+        while (xQueueReceive(eventosQueue, &evento, 0) == pdTRUE) {
 
             if (evento != NENHUM) {
 
@@ -65,8 +65,7 @@ void taskNuvem(void *parameter) {
             }
         }
 
-        if (xQueueReceive(eventosFornoQueue, &eventoForno, pdMS_TO_TICKS(1000)) == pdTRUE) {
-            enviarEvento(obterEstadoFornoTexto(eventoForno));
+        while (xQueueReceive(eventosFornoQueue, &eventoForno, 0) == pdTRUE) {
 
             if (estadoFornoAnterior == FORNO_DESLIGADO && eventoForno != FORNO_DESLIGADO) {
                 iniciarSessao();

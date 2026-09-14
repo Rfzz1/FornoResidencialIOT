@@ -1,10 +1,10 @@
   #include <Arduino.h>
   #include <ArduinoJson.h>
+  #include <WebSocketsClient.h>
   #include "config.h"
   #include "sensores.h"
   #include "api.h"
   #include "estados.h"  
-  #include "telemetria.h"
   #include "iot.h"
   #include "ws.h"
   #include "utils.h"
@@ -13,6 +13,11 @@
   #include "api.h"
   #include "bluetooth.h"
   #include "sessao.h"
+  #include "ws.h"
+
+  //Websocket
+
+  WebSocketsClient webSocket;
 
   //Filas e mutaxes
  
@@ -35,6 +40,12 @@
     Serial.begin(115200);
     Serial.println("FIRMWARE V2.0");
 
+    //Websockets
+
+    webSocket.beginSSL("monitoramentoforno.com.br", 443, "/v1/fornos/ws");
+    webSocket.onEvent(aoReceberEventoWebSocket);
+    webSocket.setReconnectInterval(5000); // Tenta reconectar a cada 5 segundos
+
     //Bluetooth e provisionamento
 
     inicializarPreferences();
@@ -43,8 +54,8 @@
     //Filas RTOS
 
     temperaturaQueue = xQueueCreate(1, sizeof(double));
-    eventosQueue = xQueueCreate(1, sizeof(eventoSistema));
-    eventosFornoQueue = xQueueCreate(1, sizeof(estadoForno));
+    eventosQueue = xQueueCreate(3, sizeof(eventoSistema));
+    eventosFornoQueue = xQueueCreate(3, sizeof(estadoForno));
     mutexEstadoSistema = xSemaphoreCreateMutex();
     mutexEstadoForno = xSemaphoreCreateMutex();
     mutexTelemetria = xSemaphoreCreateMutex();
@@ -72,5 +83,6 @@
 
   void loop() {
 
+    webSocket.loop(); // Mantém o WebSocket ativo e gerencia reconexões
 
   }
