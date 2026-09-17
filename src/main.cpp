@@ -1,6 +1,5 @@
   #include <Arduino.h>
   #include <ArduinoJson.h>
-  #include <WebSocketsClient.h>
   #include "config.h"
   #include "telemetria.h"
   #include "sensores.h"
@@ -11,14 +10,8 @@
   #include "utils.h"
   #include "cerebroRTOS.h"
   #include "alertas.h"
-  #include "api.h"
   #include "bluetooth.h"
   #include "sessao.h"
-  #include "ws.h"
-
-  //Websocket
-
-  WebSocketsClient webSocket;
 
   //Filas e mutaxes
  
@@ -40,12 +33,6 @@
 
     Serial.begin(115200);
     Serial.println("FIRMWARE V2.0");
-
-    //Websockets
-
-    webSocket.beginSSL("monitoramentoforno.com.br", 443, "ws/" + dados.serialNumber + "/fornos");
-    webSocket.onEvent(aoReceberEventoWebSocket);
-    webSocket.setReconnectInterval(5000); // Tenta reconectar a cada 5 segundos
 
     //Bluetooth e provisionamento
 
@@ -78,12 +65,10 @@
     xTaskCreatePinnedToCore(taskTemperatura, "Task Leitura", 4096, NULL, 6, NULL, 0);
     xTaskCreatePinnedToCore(taskAlertas, "Task Alertas", 2048, NULL, 4, NULL, 0);
     xTaskCreatePinnedToCore(taskSessao, "Task Sessao", 4096, NULL, 5, NULL, 0);
-  
+    xTaskCreatePinnedToCore(taskWebSocket, "Task WebSocket", 4096, NULL, 1, NULL, 1);
     Serial.println("TASKS INICIADAS COM SUCESSO!");
   }
 
   void loop() {
-
-    webSocket.loop(); // Mantém o WebSocket ativo e gerencia reconexões
 
   }

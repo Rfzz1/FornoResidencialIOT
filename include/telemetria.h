@@ -14,6 +14,7 @@
         bool espConfigurado = false;
         bool buzzerMutado = false;
         bool sessaoIniciada = false;
+        bool fezLogin = false;
 
         float TEMP_ATUAL = 0;
         float ULTIMA_TEMP = 0;
@@ -47,6 +48,7 @@
 
         String serialNumber;
         String deviceSecret;
+        String tokenUsuario;
     };
 
 extern Telemetria dados;

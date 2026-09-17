@@ -1,3 +1,4 @@
+#include <WebSocketsClient.h>
 #include "ws.h"
 #include <Websockets.h>
 #include <ArduinoJson.h>
@@ -6,6 +7,33 @@
 #include "config.h"
 #include "buzzer.h"
 #include "telemetria.h"
+
+  //Websocket
+
+  WebSocketsClient webSocket;
+
+void taskWebSocket(void *parameter) {
+    for (;;) {
+
+        if (!WiFi.isConnected()) {
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            continue;
+        }
+
+        if (dados.fezLogin && !webSocket.isConnected()) {
+            Serial.println("[WS] Tentando reconectar ao servidor WebSocket...");
+            webSocket.beginSSL("monitoramentoforno.com.br", 443, "/ws/" + dados.serialNumber + "/fornos" + "?token=" + dados.tokenUsuario);
+            webSocket.onEvent(aoReceberEventoWebSocket);
+            webSocket.setReconnectInterval(5000); // Tenta reconectar a cada 5 segundos
+
+            Serial.println("WebSocket iniciado com sucesso!");
+
+        }
+
+        webSocket.loop();
+        vTaskDelay(10 / portTICK_PERIOD_MS); // Pequena pausa para evitar sobrecarga da CPU
+    }
+}
 
 void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t * texto, size_t tamanho) {
     switch (tipoEvento) {
@@ -32,9 +60,13 @@ void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t * texto, size_t taman
             boolean muted = doc["muted"];
 
             if (acao && strcmp(acao, "MUTE") == 0 && muted) {
+
                 Serial.println("[WS] Comando MUTE recebido!");
-                dados.buzzerMutado = true;
-                atualizarBuzzer(dados.estadoAtual);
+
+                xSemaphoreTake(mutexWebSocket, portMAX_DELAY);
+                    dados.buzzerMutado = true;
+                xSemaphoreGive(mutexWebSocket);
+
             } else {
                 Serial.println("[WS] Comando desconhecido ou inválido.");
             }

@@ -5,5 +5,6 @@
 #include "utils.h"
 
 void atualizarBuzzer(estadoSistema estadoAtual);
+void desligarBuzzer();
 
 #endif

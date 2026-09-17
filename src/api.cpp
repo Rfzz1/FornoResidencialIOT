@@ -212,6 +212,8 @@ void fazerLogin() {
         JsonDocument res;
         deserializeJson(res, payload);
         tokenJWT = res["token"].as<String>(); // Certifique-se de salvar o token!
+        dados.tokenUsuario = tokenJWT;
+        dados.fezLogin = true;
         Serial.println("Login com sucesso!");
     } else {
         Serial.printf("DEBUG ERRO HTTP: codigo=%d mensagem=%s\n", code, http.errorToString(code).c_str());
@@ -356,6 +358,8 @@ int enviarRequisicaoHTTP(
         }
 
         tokenJWT = "";
+        dados.tokenUsuario = "";
+        dados.fezLogin = false;
 
         if (!garantirLogin())
             return codigo;

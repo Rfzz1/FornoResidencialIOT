@@ -11,6 +11,7 @@ void taskAlertas(void *parameter) {
 
   estadoForno estadoFornoAtual;
   estadoSistema estadoSistemaAtual;
+  bool buzzerMutado;
 
   for (;;) {
 
@@ -23,12 +24,28 @@ void taskAlertas(void *parameter) {
     estadoSistemaAtual = dados.estadoAtual;
 
     xSemaphoreGive(mutexEstadoSistema);
-    
-    alertas();
-    atualizarBuzzer(estadoSistemaAtual);
-    atualizarLEDs(estadoSistemaAtual);
 
-    vTaskDelay(100 / portTICK_PERIOD_MS);
+    xSemaphoreTake(mutexWebSocket, portMAX_DELAY);
+    buzzerMutado = dados.buzzerMutado;
+
+    xSemaphoreGive(mutexWebSocket);
+
+    if (estadoSistemaAtual != CRITICO && estadoSistemaAtual != ALERTA && estadoSistemaAtual != ERRO_SENSOR) {
+      xSemaphoreTake(mutexWebSocket, portMAX_DELAY);
+        dados.buzzerMutado = false;
+      xSemaphoreGive(mutexWebSocket);
+    }
+
+    if (buzzerMutado) {
+      desligarBuzzer();
+      continue;
+    }
+      
+      alertas();
+      atualizarBuzzer(estadoSistemaAtual);
+      atualizarLEDs(estadoSistemaAtual);
+
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
   }
 }
