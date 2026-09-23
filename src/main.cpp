@@ -48,6 +48,7 @@
     mutexEstadoForno = xSemaphoreCreateMutex();
     mutexTelemetria = xSemaphoreCreateMutex();
     mutexWebSocket = xSemaphoreCreateMutex();
+    mutexTemporizador = xSemaphoreCreateMutex();
 
     //Definição de Pinos
 

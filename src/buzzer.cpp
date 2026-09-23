@@ -6,11 +6,24 @@
 static unsigned long milisBuzzerErro = 0;
 static unsigned long milisBuzzerAlerta = 0;
 static unsigned long milisBuzzerHorario = 0;
+static unsigned long milisBuzzerTemporizador = 0;
 
 void desligarBuzzer() {
 
   digitalWrite(BUZZER, LOW);
 
+}
+
+void dispararBuzzer() {
+
+  if (millis() - milisBuzzerTemporizador >= 1200) {
+
+    milisBuzzerTemporizador = millis();
+
+    dados.buzzerTemporizadorPisca = !dados.buzzerTemporizadorPisca;
+
+    digitalWrite(BUZZER, dados.buzzerTemporizadorPisca);
+  }
 }
 
 void buzzerHorarioAlarme() {

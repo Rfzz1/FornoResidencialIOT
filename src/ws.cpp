@@ -58,6 +58,7 @@ void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t * texto, size_t taman
 
             const char* acao = doc["acao"];
             boolean muted = doc["muted"];
+            uint32_t duracaoSegundos = doc["duracaoSegundos"];
 
             if (acao && strcmp(acao, "MUTE") == 0 && muted) {
 
@@ -66,6 +67,16 @@ void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t * texto, size_t taman
                 xSemaphoreTake(mutexWebSocket, portMAX_DELAY);
                     dados.buzzerMutado = true;
                 xSemaphoreGive(mutexWebSocket);
+
+            } else if (acao && strcmp(acao, "DISPARAR") == 0 && duracaoSegundos){
+
+                Serial.println("[WS] Comando DISPARAR recebido!");
+
+                xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
+                    dados.temporizadorLigado = true;
+                    dados.mensagemChegou = millis();
+                    dados.duracaoSegundosTemporizador = duracaoSegundos;
+                xSemaphoreGive(mutexTemporizador);
 
             } else {
                 Serial.println("[WS] Comando desconhecido ou inválido.");
