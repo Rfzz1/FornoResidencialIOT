@@ -19,6 +19,8 @@ void taskAlertas(void *parameter) {
 
   for (;;) {
 
+    bool pularBuzzerPadrao = false;
+
     xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
     estadoFornoAtual = dados.estadoFornoAtual;  
 
@@ -49,7 +51,7 @@ void taskAlertas(void *parameter) {
 
     if (buzzerMutado) {
       desligarBuzzer();
-      continue;
+      continue; 
     }
 
     if (temporizadorLigado) {
@@ -58,12 +60,19 @@ void taskAlertas(void *parameter) {
 
       if ((agora - mensagemChegou)/1000 >= duracaoSegundosTemporizador) {
           dispararBuzzer();
+          pularBuzzerPadrao = true;
+          agora = 0;
+          temporizadorLigado = false;
+      } else {
+        pularBuzzerPadrao = false;
       }
 
     }
       
     alertas();
-    atualizarBuzzer(estadoSistemaAtual);
+    if (!pularBuzzerPadrao) {
+      atualizarBuzzer(estadoSistemaAtual);
+    }
     atualizarLEDs(estadoSistemaAtual);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);

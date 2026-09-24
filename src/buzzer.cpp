@@ -92,7 +92,6 @@ void atualizarBuzzer(estadoSistema estadoAtual) {
       break;
 
     default:
-
       desligarBuzzer();
       break;
   }
