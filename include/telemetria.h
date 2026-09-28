@@ -17,6 +17,7 @@
         bool sessaoIniciada = false;
         bool fezLogin = false;
         bool temporizadorLigado = false;
+        bool entrouDisparo = false;
 
         float TEMP_ATUAL = 0;
         float ULTIMA_TEMP = 0;
@@ -30,6 +31,7 @@
         unsigned long tempoLigadoSegundos = 0;
         unsigned long inicioTentativa = 0;
         unsigned long mensagemChegou = 0;
+        unsigned long inicioDisparo = 0;
 
         estadoSistema estadoAtual = INICIANDO;
         estadoSistema estadoAnterior = INICIANDO;

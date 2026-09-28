@@ -13,8 +13,10 @@ void taskAlertas(void *parameter) {
   estadoSistema estadoSistemaAtual;
   bool buzzerMutado;
   bool temporizadorLigado;
+  bool entrouDisparo;
   unsigned long agora = 0;
   unsigned long mensagemChegou;
+  unsigned long inicioDisparo;
   uint32_t duracaoSegundosTemporizador;
 
   for (;;) {
@@ -40,6 +42,8 @@ void taskAlertas(void *parameter) {
     temporizadorLigado = dados.temporizadorLigado;
     mensagemChegou = dados.mensagemChegou;
     duracaoSegundosTemporizador = dados.duracaoSegundosTemporizador;
+    entrouDisparo = dados.entrouDisparo;
+    inicioDisparo = dados.inicioDisparo;
 
     xSemaphoreGive(mutexTemporizador);
 
@@ -60,14 +64,35 @@ void taskAlertas(void *parameter) {
 
       if ((agora - mensagemChegou)/1000 >= duracaoSegundosTemporizador) {
           dispararBuzzer();
+          xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
+            dados.entrouDisparo = true;
+            dados.inicioDisparo = millis();
+          xSemaphoreGive(mutexTemporizador);
           pularBuzzerPadrao = true;
           agora = 0;
-          temporizadorLigado = false;
+          xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
+            dados.temporizadorLigado = false;
+          xSemaphoreGive(mutexTemporizador);
       } else {
-        pularBuzzerPadrao = false;
+        dispararBuzzer();
+        pularBuzzerPadrao = true;
       }
 
     }
+
+    if (entrouDisparo) {
+
+        if ((millis() - inicioDisparo)/1000 >= 60) {
+          desligarBuzzer();
+          xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
+            dados.entrouDisparo = false;
+          xSemaphoreGive(mutexTemporizador);
+          pularBuzzerPadrao = true;
+          inicioDisparo = 0;
+        } else {
+          pularBuzzerPadrao = false;
+        }
+      }
       
     alertas();
     if (!pularBuzzerPadrao) {
