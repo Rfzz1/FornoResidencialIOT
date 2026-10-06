@@ -22,6 +22,8 @@
   SemaphoreHandle_t mutexEstadoSistema;
   SemaphoreHandle_t mutexTelemetria;
   SemaphoreHandle_t mutexWebSocket;
+  SemaphoreHandle_t mutexTemporizador;
+  SemaphoreHandle_t mutexLoginWebSocket;
 
   //Preferences
 
@@ -35,6 +37,8 @@
     Serial.println("FIRMWARE V2.0");
 
     //Bluetooth e provisionamento
+
+    mutexLoginWebSocket = xSemaphoreCreateMutex();
 
     inicializarPreferences();
     verificarEstadoDispositivo();
@@ -66,7 +70,7 @@
     xTaskCreatePinnedToCore(taskTemperatura, "Task Leitura", 4096, NULL, 6, NULL, 0);
     xTaskCreatePinnedToCore(taskAlertas, "Task Alertas", 2048, NULL, 4, NULL, 0);
     xTaskCreatePinnedToCore(taskSessao, "Task Sessao", 4096, NULL, 5, NULL, 0);
-    xTaskCreatePinnedToCore(taskWebSocket, "Task WebSocket", 4096, NULL, 1, NULL, 1);
+    xTaskCreatePinnedToCore(taskWebSocket, "Task WebSocket", 8192, NULL, 1, NULL, 1);
     Serial.println("TASKS INICIADAS COM SUCESSO!");
   }
 

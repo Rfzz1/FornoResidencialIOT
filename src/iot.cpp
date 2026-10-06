@@ -4,6 +4,7 @@
 #include "iot.h"
 #include <time.h>
 #include "telemetria.h"
+#include "utils.h"
 
 char ssid[] = "A54 de Rafael";
 char pass[] = "Rafa130209@";
@@ -13,17 +14,19 @@ static unsigned long milisEstabilizarWiFi = 0;
 static unsigned long tentativaNTP = 0;
 unsigned long ultimoTesteWiFi = 0;
 
-
 void taskConectividade(void *parameter) {
     conectarWiFi();
 
-    for (;;) {
-
-        verificarWiFi();
+    // Aguarda obrigatoriamente a sincronização da hora antes de prosseguir
+    Serial.println("Aguardando sincronizacao do relogio NTP...");
+    while (!dados.horaSincronizada) {
         estabilizarHoraLocal();
-        atualizarHorarioAlarme();
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+    }
 
+    for (;;) {
+        verificarWiFi();
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
@@ -47,7 +50,7 @@ void conectarWiFi() {
             Serial.print(".");
         }
     }
-    Serial.println("\nWiFi cdronectado.");
+    Serial.println("\nWiFi conectado.");
 
     Serial.print("Status: ");
     Serial.println(WiFi.status());
@@ -62,7 +65,6 @@ void conectarWiFi() {
     Serial.println(WiFi.dnsIP());
 
     configurarNTP();
-    printLocalTime();
 }
 
 void verificarWiFi() {
@@ -85,12 +87,12 @@ void verificarWiFi() {
 
 void configurarNTP() {
     configTime(
-    -10800,
-    0,
-    "time.google.com",
-    "time.cloudflare.com",
-    "pool.ntp.org"
-);
+        -10800,
+        0,
+        "time.google.com",
+        "time.cloudflare.com",
+        "pool.ntp.org"
+    );
 }
 
 void estabilizarHoraLocal() {
@@ -101,39 +103,32 @@ void estabilizarHoraLocal() {
         return;
     }
 
-
     if (millis() - tentativaNTP >= 1000) {
         tentativaNTP = millis();
     
         if (getLocalTime(&timeinfo, 10000)) {
 
             dados.horaSincronizada = true;
-            Serial.println("Hora local sincronizada.");
+            Serial.println("Hora local sincronizada com sucesso!");
+            printLocalTime();
 
         } else {
 
             Serial.println("Obtendo hora local...");
         }
     }
-    if (millis() - dados.inicioTentativa >= 10000 && !dados.horaSincronizada && !dados.timeoutNTP) {
-
-        dados.timeoutNTP = true;
-        Serial.println("Falha ao sincronizar NTP.");
-    }
 }
 
 void printLocalTime() {
     struct tm infoHoraLocal;
 
-    if (getLocalTime(&infoHoraLocal) && millis() - milisAtualizarHoraLocal >= 1000) {
-        milisAtualizarHoraLocal = millis();
-
+    if (getLocalTime(&infoHoraLocal)) {
         dados.HoraAtual = infoHoraLocal.tm_hour;
         dados.MinutoAtual = infoHoraLocal.tm_min;
         dados.SegundoAtual = infoHoraLocal.tm_sec;
 
         Serial.printf(
-            "%02d:%02d:%02d\n",
+            "Hora atual: %02d:%02d:%02d\n",
             dados.HoraAtual,
             dados.MinutoAtual,
             dados.SegundoAtual
@@ -142,9 +137,7 @@ void printLocalTime() {
 }
 
 String obterHorarioFormatado() {
-
     char buffer[20];
-
     sprintf(
         buffer,
         "%02d:%02d:%02d",
@@ -152,21 +145,5 @@ String obterHorarioFormatado() {
         dados.MinutoAtual,
         dados.SegundoAtual
     );
-
     return String(buffer);
-}
-
-void verificarHorarioAlarme() {
-    if (dados.HoraAtual == dados.HoraFim && dados.MinutoAtual == dados.MinutoFim) {
-            dados.buzzerAtivaHorario = true;
-        } else {
-            dados.buzzerAtivaHorario = false;
-        }
-}
-
-void atualizarHorarioAlarme() {
-    if (millis() - milisAtualizarHorarioAlarme >= 1000) {
-        milisAtualizarHorarioAlarme = millis();
-        verificarHorarioAlarme();
-    }
 }

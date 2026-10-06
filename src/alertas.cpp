@@ -11,6 +11,7 @@ void taskAlertas(void *parameter) {
 
   estadoForno estadoFornoAtual;
   estadoSistema estadoSistemaAtual;
+  estadoSistema estadoAnterior = SEGURO;
   bool buzzerMutado;
   bool temporizadorLigado;
   bool entrouDisparo;
@@ -47,15 +48,22 @@ void taskAlertas(void *parameter) {
 
     xSemaphoreGive(mutexTemporizador);
 
-    if (estadoSistemaAtual != CRITICO && estadoSistemaAtual != ALERTA && estadoSistemaAtual != ERRO_SENSOR) {
-      xSemaphoreTake(mutexWebSocket, portMAX_DELAY);
-        dados.buzzerMutado = false;
-      xSemaphoreGive(mutexWebSocket);
+    if (estadoAnterior != estadoSistemaAtual) {
+
+      if ((estadoAnterior == CRITICO || estadoAnterior == ALERTA || estadoAnterior == ERRO_SENSOR) && estadoSistemaAtual == SEGURO) {
+
+        xSemaphoreTake(mutexWebSocket, portMAX_DELAY);
+          dados.buzzerMutado = false;
+        xSemaphoreGive(mutexWebSocket);
+      }
+
     }
+
+    estadoAnterior = estadoSistemaAtual;
 
     if (buzzerMutado) {
       desligarBuzzer();
-      continue; 
+      pularBuzzerPadrao = true;
     }
 
     if (temporizadorLigado) {
@@ -63,7 +71,10 @@ void taskAlertas(void *parameter) {
       agora = millis();
 
       if ((agora - mensagemChegou)/1000 >= duracaoSegundosTemporizador) {
-          dispararBuzzer();
+
+          if (!buzzerMutado) {
+             dispararBuzzer();
+          }
           xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
             dados.entrouDisparo = true;
             dados.inicioDisparo = millis();
@@ -74,7 +85,9 @@ void taskAlertas(void *parameter) {
             dados.temporizadorLigado = false;
           xSemaphoreGive(mutexTemporizador);
       } else {
-        dispararBuzzer();
+          if (!buzzerMutado) {
+             dispararBuzzer();
+          }
         pularBuzzerPadrao = true;
       }
 

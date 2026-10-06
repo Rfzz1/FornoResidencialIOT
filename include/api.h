@@ -26,4 +26,7 @@ int enviarRequisicaoHTTP(
 
 void taskNuvem(void *parameter);
 
+String getSessaoId();
+void setSessaoId(String SessaoId);
+
 #endif

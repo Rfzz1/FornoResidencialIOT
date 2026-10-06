@@ -22,13 +22,20 @@
 String tokenJWT = "";
 String sessaoId = "";
 
+String getSessaoId() {
+    return sessaoId;
+}
+
+void setSessaoId(String SessaoId) {
+    sessaoId = SessaoId;
+}
+
 double temperaturaAtual = 0;
 double temperaturaUltima = 0;
 
 // controle de recuperação de sessão
 static bool tentandoRecuperarSessao = false;
 static int tentativasSessao = 0;
-
 //Task para enviar telemetria periodicamente
 void taskNuvem(void *parameter) {
 
@@ -211,9 +218,14 @@ void fazerLogin() {
         String payload = http.getString();
         JsonDocument res;
         deserializeJson(res, payload);
-        tokenJWT = res["token"].as<String>(); // Certifique-se de salvar o token!
-        dados.tokenUsuario = tokenJWT;
-        dados.fezLogin = true;
+
+        xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
+            tokenJWT = res["token"].as<String>();
+            dados.tokenUsuario = tokenJWT;
+            dados.fezLogin = true;
+        xSemaphoreGive(mutexLoginWebSocket);
+
+
         Serial.println("Login com sucesso!");
     } else {
         Serial.printf("DEBUG ERRO HTTP: codigo=%d mensagem=%s\n", code, http.errorToString(code).c_str());
@@ -357,9 +369,11 @@ int enviarRequisicaoHTTP(
             return codigo;
         }
 
-        tokenJWT = "";
-        dados.tokenUsuario = "";
-        dados.fezLogin = false;
+        xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
+            tokenJWT = "";
+            dados.tokenUsuario = "";
+            dados.fezLogin = false;
+        xSemaphoreGive(mutexLoginWebSocket);
 
         if (!garantirLogin())
             return codigo;

@@ -25,8 +25,10 @@ enum eventoSistema {
         FORNO_ESFRIANDO_SAIDA
     };
 
+void configurarTempo();
 String obterEstadoSistemaTexto(estadoSistema estado);
 String obterEstadoFornoTexto(estadoForno estado);
 String obterEventoSistemaTexto(eventoSistema eventoSistema);
+
 
 #endif

@@ -15,10 +15,14 @@ void taskSessao(void *parameter) {
   static estadoForno estadoFornoAnterior = dados.estadoFornoAnterior;
   static estadoForno estadoFornoAtual = dados.estadoFornoAtual;
 
+
   for (;;) {
       tratarInicioSessao(estadoFornoAtual, estadoFornoAnterior);
       tratarFimSessao(estadoFornoAtual, estadoFornoAnterior);
-      tratarTempoSessao();
+
+      if (!getSessaoId().isEmpty()) {
+        tratarTempoSessao();
+      }
 
       estadoFornoAnterior = estadoFornoAtual;
       estadoFornoAtual = dados.estadoFornoAtual;

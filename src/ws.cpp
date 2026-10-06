@@ -1,6 +1,5 @@
 #include <WebSocketsClient.h>
 #include "ws.h"
-#include <Websockets.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include "api.h"
@@ -12,22 +11,40 @@
 
   WebSocketsClient webSocket;
 
+
 void taskWebSocket(void *parameter) {
+
+    webSocket.onEvent(aoReceberEventoWebSocket);
+    bool fezLogin;
+    String token;
+
     for (;;) {
 
         if (!WiFi.isConnected()) {
             vTaskDelay(1000 / portTICK_PERIOD_MS);
+            dados.iniciadoWebSocket = false;
             continue;
         }
 
-        if (dados.fezLogin && !webSocket.isConnected()) {
-            Serial.println("[WS] Tentando reconectar ao servidor WebSocket...");
-            webSocket.beginSSL("monitoramentoforno.com.br", 443, "/ws/" + dados.serialNumber + "/fornos" + "?token=" + dados.tokenUsuario);
-            webSocket.onEvent(aoReceberEventoWebSocket);
-            webSocket.setReconnectInterval(5000); // Tenta reconectar a cada 5 segundos
+        if (dados.iniciadoWebSocket == false) {
 
-            Serial.println("WebSocket iniciado com sucesso!");
+            xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
+                fezLogin = dados.fezLogin;
+                token = dados.tokenUsuario;
+            xSemaphoreGive(mutexLoginWebSocket);
 
+            if (fezLogin && !webSocket.isConnected()) {
+
+                Serial.println("[WS] Tentando reconectar ao servidor WebSocket...");
+                webSocket.setExtraHeaders("Origin: https://monitoramentoforno.com.br");
+                webSocket.beginSSL("monitoramentoforno.com.br", 443, "/v1/ws/" + dados.serialNumber + "/fornos" + "?token=" + token, "");
+                webSocket.enableHeartbeat(3000, 10000, 5); // Envia heartbeat a cada 3 segundos, timeout de 10 segundos, tenta reconectar 5 vezes
+                webSocket.setReconnectInterval(5000); // Tenta reconectar a cada 5 segundos
+
+                Serial.println("WebSocket iniciado com sucesso!");
+                dados.iniciadoWebSocket = true;
+
+            }
         }
 
         webSocket.loop();
@@ -45,47 +62,63 @@ void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t * texto, size_t taman
             break;
         case WStype_TEXT: {
             Serial.println("[WS] Mensagem de texto recebida.");
+            Serial.printf("[WS] Texto recebido: %.*s\n", (int)tamanho, (char*)texto);
 
             JsonDocument doc;
 
-            DeserializationError error = deserializeJson(doc, texto, tamanho);
+            String textoRecebido((char*)texto, tamanho);
 
-            if (error) {
-                Serial.print("[WS] Erro ao desserializar JSON: ");
-                Serial.println(error.f_str());
-                return;
-            }
+            if (textoRecebido.startsWith("{")) {
 
-            const char* acao = doc["acao"];
-            boolean muted = doc["muted"];
-            uint32_t duracaoSegundos = doc["duracaoSegundos"];
+                DeserializationError error = deserializeJson(doc, texto, tamanho);
 
-            if (acao && strcmp(acao, "MUTE") == 0 && muted) {
+                if (error) {
+                    Serial.print("[WS] Erro ao desserializar JSON: ");
+                    Serial.println(error.f_str());
+                    return;
+                }
 
-                Serial.println("[WS] Comando MUTE recebido!");
+                const char* acao = doc["acao"];
+                boolean muted = doc["muted"];
+                uint32_t duracaoSegundos = doc["duracaoSegundos"];
 
-                xSemaphoreTake(mutexWebSocket, portMAX_DELAY);
-                    dados.buzzerMutado = true;
-                xSemaphoreGive(mutexWebSocket);
+                if (acao && strcmp(acao, "MUTE") == 0 && muted) {
 
-            } else if (acao && strcmp(acao, "DISPARAR") == 0 && duracaoSegundos){
+                    Serial.println("[WS] Comando MUTE recebido!");
 
-                Serial.println("[WS] Comando DISPARAR recebido!");
+                    xSemaphoreTake(mutexWebSocket, portMAX_DELAY);
+                        dados.buzzerMutado = true;
+                    xSemaphoreGive(mutexWebSocket);
 
-                xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
-                    dados.temporizadorLigado = true;
-                    dados.mensagemChegou = millis();
-                    dados.duracaoSegundosTemporizador = duracaoSegundos;
-                xSemaphoreGive(mutexTemporizador);
+                } else if (acao && strcmp(acao, "DISPARAR") == 0 && duracaoSegundos){
 
+                    Serial.println("[WS] Comando DISPARAR recebido!");
+
+                    xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
+                        dados.temporizadorLigado = true;
+                        dados.mensagemChegou = millis();
+                        dados.duracaoSegundosTemporizador = duracaoSegundos;
+                    xSemaphoreGive(mutexTemporizador);
+
+                } else {
+                    Serial.println("[WS] Comando desconhecido ou inválido.");
+                }
             } else {
-                Serial.println("[WS] Comando desconhecido ou inválido.");
+                Serial.println("[WS] Mensagem informativa recebida e ignorada");
             }
+
             break;
+        }
+
+        case WStype_PONG: {
+            Serial.println("[WS] Pong recebido.");
+            break;
+
         }
 
         default:
             Serial.println("[WS] Evento desconhecido recebido.");
+            Serial.printf("[WS] Evento recebido: %i\n", (int)tipoEvento);
             break;
     }
 }

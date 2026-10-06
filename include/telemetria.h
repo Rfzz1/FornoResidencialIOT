@@ -18,6 +18,7 @@
         bool fezLogin = false;
         bool temporizadorLigado = false;
         bool entrouDisparo = false;
+        bool iniciadoWebSocket = false;
 
         float TEMP_ATUAL = 0;
         float ULTIMA_TEMP = 0;
