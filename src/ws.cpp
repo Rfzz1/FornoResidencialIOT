@@ -59,6 +59,7 @@ void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t * texto, size_t taman
             break;
         case WStype_DISCONNECTED:
             Serial.println("[WS] Desconectado do servidor WebSocket.");
+            dados.iniciadoWebSocket = false;
             break;
         case WStype_TEXT: {
             Serial.println("[WS] Mensagem de texto recebida.");
