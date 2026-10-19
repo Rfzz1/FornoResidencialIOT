@@ -72,7 +72,7 @@ void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t * texto, size_t taman
             if (textoRecebido.startsWith("{")) {
 
                 DeserializationError error = deserializeJson(doc, texto, tamanho);
-
+                
                 if (error) {
                     Serial.print("[WS] Erro ao desserializar JSON: ");
                     Serial.println(error.f_str());
