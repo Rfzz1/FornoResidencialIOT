@@ -8,10 +8,18 @@ BluetoothSerial SerialBT;
 static bool aguardandoReinicio = false;
 static unsigned long tempoInicioReinicio = 0;
 static bool bluetoothConectado = false;
+static bool deveDesligar = false;
 
 void taskBluetooth(void *parameter) {
 
     for (;;) {
+
+        if (deveDesligar) {
+            Serial.println("Desligando Bluetooth para liberar memória.... ");
+            SerialBT.end();
+            bluetoothConectado = false;
+            vTaskDelete(NULL);
+        }
 
         if (bluetoothConectado == true) {
             processarBluetooth();
@@ -21,6 +29,10 @@ void taskBluetooth(void *parameter) {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 
+}
+
+void solicitarDesligamentoBluetooth() {
+    deveDesligar = true;
 }
 
 void salvarSecretBluetooth(String recebidoDoTerminal) {

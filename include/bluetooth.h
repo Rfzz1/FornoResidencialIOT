@@ -7,6 +7,7 @@ void taskBluetooth(void *parameter);
 void inicializarBluetooth();
 void inicializarPreferences();
 void processarBluetooth();
+void solicitarDesligamentoBluetooth();
 void verificarReiniciar();
 void salvarSecretBluetooth(String recebidoDoTerminal);
 

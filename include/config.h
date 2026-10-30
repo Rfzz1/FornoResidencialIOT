@@ -32,7 +32,7 @@ extern MAX6675 TERMOPAR;
 // =====================================================
 // CONSTANTES
 // =====================================================
-constexpr const char* API_BASE_URL = "http://monitoramentoforno.com.br";
+constexpr const char* API_BASE_URL = "https://monitoramentoforno.com.br";
 
 //protocolo "wss://" (WebSocket Seguro)
 constexpr const char* WS_URL = "wss://www.monitoramentoforno.com.br/ws/forno?serialNumber=";
@@ -67,6 +67,7 @@ extern SemaphoreHandle_t mutexTelemetria;
 extern SemaphoreHandle_t mutexWebSocket;
 extern SemaphoreHandle_t mutexTemporizador;
 extern SemaphoreHandle_t mutexLoginWebSocket;
+extern SemaphoreHandle_t mutexHttps;
 
 // Preferences
 
