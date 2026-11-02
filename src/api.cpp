@@ -521,52 +521,51 @@ void atualizarSessao()
 // ENVIAR TELEMETRIA
 // ==========================
 
-void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String &estadoSistema, const String &estadoForno, int tempoLigado)
-{
-
-    if (sessaoId.isEmpty())
+    void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String &estadoSistema, const String &estadoForno, int tempoLigado)
     {
-        if (estadoForno == "FORNO_DESLIGADO")
+
+        if (sessaoId.isEmpty())
         {
-            return;
+            if (estadoForno == "FORNO_DESLIGADO")
+            {
+                return;
+            }
+            // Se estiver ligado mas perdeu a sessão (ex: reiniciou), tenta recuperar
+            if (!iniciarSessao())
+            {
+                Serial.println("Nao foi possivel iniciar a sessao.");
+                return;
+            }
         }
-        // Se estiver ligado mas perdeu a sessão (ex: reiniciou), tenta recuperar
-        if (!iniciarSessao())
-        {
-            Serial.println("Nao foi possivel iniciar a sessao.");
-            return;
+
+        JsonDocument doc;
+        String body;
+
+        if(isnan(temperaturaAtual)) {
+            doc["temperaturaAtual"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
+        } else {
+            doc["temperaturaAtual"] = temperaturaAtual;
         }
+
+        doc["temperaturaUltima"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
+        doc["estadoSistema"] = estadoSistema;
+        doc["estadoForno"] = estadoForno;
+        doc["tempoLigadoMinutos"] = tempoLigado;
+
+        serializeJson(doc, body);
+
+        String resposta;
+
+        int code = enviarRequisicaoHTTP(
+            String(API_BASE_URL) + "/v1/telemetrias",
+            "POST",
+            body,
+            &resposta);
+
+        Serial.printf("Código: %d\n", code);
+        Serial.println("Resposta:");
+        Serial.println(resposta);
     }
-
-    JsonDocument doc;
-    String body;
-
-    if (!iniciarSessao())
-    {
-        Serial.println("Nao foi possivel iniciar a sessao.");
-        return;
-    }
-
-    doc["temperaturaAtual"] = temperaturaAtual;
-    doc["temperaturaUltima"] = temperaturaUltima;
-    doc["estadoSistema"] = estadoSistema;
-    doc["estadoForno"] = estadoForno;
-    doc["tempoLigadoMinutos"] = tempoLigado;
-
-    serializeJson(doc, body);
-
-    String resposta;
-
-    int code = enviarRequisicaoHTTP(
-        String(API_BASE_URL) + "/v1/telemetrias",
-        "POST",
-        body,
-        &resposta);
-
-    Serial.printf("Código: %d\n", code);
-    Serial.println("Resposta:");
-    Serial.println(resposta);
-}
 
 // ==========================
 // TEMPERATURA

@@ -9,6 +9,10 @@ void taskCerebro(void *parameter)
 {
 
     double temperaturaAtual;
+    
+    static int tentativasLeitura = 0;
+    const int MAX_TENTATIVAS_LEITURA = 3;
+    bool sucessoLeitura = false;
 
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
@@ -21,23 +25,23 @@ void taskCerebro(void *parameter)
 
         condicoes.ULTIMA_TEMP = condicoes.TEMP_ATUAL;
 
-        condicoes.TEMP_ATUAL = temperaturaAtual;
-
         if (temperaturaValida())
         {
-
+            condicoes.TEMP_ATUAL = temperaturaAtual;
             Serial.printf("Temperatura atual: %.2f °C\n", condicoes.TEMP_ATUAL);
+            tentativasLeitura = 0;
         }
         else
         {
-
-            Serial.println("Leitura de temperatura inválida.");
-
-            continue; // Skip further processing if the temperature is invalid
+            tentativasLeitura++;
         }
 
         estadoSistema novoEstadoLido = definirEstadoSistema();  // Para onde o novo estado vai ir (futuro imediato)
         estadoForno novoEstadoFornoLido = definirEstadoForno(); // Para onde o novo estado do forno vai ir (futuro imediato)
+
+        if (tentativasLeitura >= MAX_TENTATIVAS_LEITURA || condicoes.estadoAtual == ERRO_SENSOR) {
+            novoEstadoLido = ERRO_SENSOR;
+        }
 
         //---- Eventos ----
 
@@ -63,7 +67,7 @@ void taskCerebro(void *parameter)
                 eventoEntrada = CRITICO_ENTRADA;
             } else if (novoEstadoLido == ERRO_SENSOR) {
                 eventoEntrada = ERRO_SENSOR_ENTRADA;
-            }
+            } 
 
             if (eventoSaida != NENHUM) {
                 xQueueSend(eventosQueue, &eventoSaida, 100/portTICK_PERIOD_MS);
