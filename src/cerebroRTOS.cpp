@@ -44,95 +44,34 @@ void taskCerebro(void *parameter)
         if (novoEstadoLido != condicoes.estadoAtual)
         {
 
-            eventoSistema evento;
-
-            switch (novoEstadoLido)
-            {
-
-            case SEGURO:
-
-                // Se o novo estado lido estiver segureo e o estado atual for lido como 'ALERTA', quer dizer que entrou em alerta e assim segue para os outros estados
-
-                if (condicoes.estadoAtual == ALERTA)
-                {
-
-                    evento = ALERTA_SAIDA;
-                }
-                else if (condicoes.estadoAtual == CRITICO)
-                {
-
-                    evento = CRITICO_SAIDA;
-                }
-                else if (condicoes.estadoAtual == ERRO_SENSOR)
-                {
-
-                    evento = ERRO_SENSOR_SAIDA;
-                }
-
-                break;
-
-            case ALERTA:
-
-                if (condicoes.estadoAtual == SEGURO)
-                {
-
-                    evento = ALERTA_ENTRADA;
-                }
-                else if (condicoes.estadoAtual == CRITICO)
-                {
-
-                    evento = CRITICO_SAIDA;
-                }
-                else if (condicoes.estadoAtual == ERRO_SENSOR)
-                {
-
-                    evento = ERRO_SENSOR_SAIDA;
-                }
-
-                break;
-
-            case CRITICO:
-
-                if (condicoes.estadoAtual == SEGURO)
-                {
-
-                    evento = CRITICO_ENTRADA;
-                }
-                else if (condicoes.estadoAtual == ALERTA)
-                {
-
-                    evento = ALERTA_SAIDA;
-                }
-                else if (condicoes.estadoAtual == ERRO_SENSOR)
-                {
-
-                    evento = ERRO_SENSOR_SAIDA;
-                }
-
-                break;
-
-            case ERRO_SENSOR:
-
-                if (condicoes.estadoAtual == SEGURO)
-                {
-
-                    evento = ERRO_SENSOR_ENTRADA;
-                }
-                else if (condicoes.estadoAtual == ALERTA)
-                {
-
-                    evento = ALERTA_SAIDA;
-                }
-                else if (condicoes.estadoAtual == CRITICO)
-                {
-
-                    evento = CRITICO_SAIDA;
-                }
-
-                break;
+            eventoSistema eventoEntrada =  NENHUM;  
+            eventoSistema eventoSaida = NENHUM;
+            
+            //saindo
+            if (condicoes.estadoAtual == ALERTA) {
+                eventoSaida = ALERTA_SAIDA;
+            } else if (condicoes.estadoAtual == CRITICO) {
+                eventoSaida = CRITICO_SAIDA;
+            } else if (condicoes.estadoAtual == ERRO_SENSOR) {
+                eventoSaida = ERRO_SENSOR_SAIDA;
             }
 
-            xQueueSend(eventosQueue, &evento, 100 / portTICK_PERIOD_MS);
+            //entrando
+            if (novoEstadoLido == ALERTA) {
+                eventoEntrada = ALERTA_ENTRADA; 
+            } else if (novoEstadoLido == CRITICO) {
+                eventoEntrada = CRITICO_ENTRADA;
+            } else if (novoEstadoLido == ERRO_SENSOR) {
+                eventoEntrada = ERRO_SENSOR_ENTRADA;
+            }
+
+            if (eventoSaida != NENHUM) {
+                xQueueSend(eventosQueue, &eventoSaida, 100/portTICK_PERIOD_MS);
+            }
+
+            if (eventoEntrada != NENHUM) {
+                xQueueSend(eventosQueue, &eventoEntrada, 100/portTICK_PERIOD_MS);
+            }
 
             xSemaphoreTake(mutexEstadoSistema, portMAX_DELAY);
 
