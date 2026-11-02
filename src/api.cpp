@@ -25,8 +25,9 @@ String sessaoId = "";
 String getSessaoId()
 {
     xSemaphoreTake(mutexSessao, portMAX_DELAY);
-    return sessaoId;
+    String copia = sessaoId;
     xSemaphoreGive(mutexSessao);
+    return copia;
 }
 
 void setSessaoId(String SessaoId)
@@ -39,8 +40,9 @@ void setSessaoId(String SessaoId)
 String getTokenJWT()
 {
     xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
-    return tokenJWT;
+    String copia = tokenJWT;
     xSemaphoreGive(mutexLoginWebSocket);
+    return copia;
 }
 
 void setTokenJWT(String TokenJWT)
@@ -213,6 +215,7 @@ void diagnosticoCompleto()
 static bool iniciarHttp(HTTPClient &http, WiFiClientSecure &client, const String &url)
 {
 
+    // client.setCACert(ROOT_CA);
     client.setInsecure();
 
     http.setTimeout(5000);
@@ -416,14 +419,7 @@ int enviarRequisicaoHTTP(
 
             setSessaoId("");
 
-            if (iniciarSessao())
-            {
-                tentativas++;
-            }
-            else
-            {
-                break;
-            }
+            tentativas++;
         }
         else
         {
@@ -451,6 +447,9 @@ bool iniciarSessao()
         return true;
 
     String resposta;
+    
+    Serial.print("Heap livre antes de iniciar sessão: ");
+    Serial.println(ESP.getFreeHeap());
 
     int code = enviarRequisicaoHTTP(
         String(API_BASE_URL) + "/v1/sessoes/iniciar",
@@ -460,6 +459,8 @@ bool iniciarSessao()
 
     Serial.print("Código recebido em iniciarSessao: ");
     Serial.println(code);
+    Serial.print("Resposta bruta da API: ");
+    Serial.println(resposta);
 
     if (code == 201)
     {
@@ -533,6 +534,11 @@ void atualizarSessao()
 
     String resposta;
 
+    if (getSessaoId().isEmpty())
+    {
+        return; 
+    }
+
     int code = enviarRequisicaoHTTP(
         String(API_BASE_URL) + "/v1/sessoes/" + getSessaoId() + "/atualizar",
         "PUT",
@@ -604,38 +610,23 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
 
 void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, double temperaturaUltima)
 {
-
-    if (getSessaoId().isEmpty())
+    if (estadoFornoTexto == "FORNO_DESLIGADO" && getSessaoId().isEmpty())
     {
-        if (estadoFornoTexto == "FORNO_DESLIGADO")
-        {
-            return;
-        }
-        if (!iniciarSessao())
-        {
-            Serial.println("Nao foi possivel iniciar a sessao.");
-            return;
-        }
+        return;
     }
-
-    Serial.printf(
-        "Heap = %u\n",
-        ESP.getFreeHeap());
-
-    JsonDocument doc;
-    String body;
-
-    Serial.print("Sessao: ");
-    Serial.println(getSessaoId());
-
+    
     if (!iniciarSessao())
     {
         Serial.println("Nao foi possivel iniciar a sessao.");
         return;
     }
 
-    Serial.print("Sessao: ");
+    Serial.printf("Heap = %u\n", ESP.getFreeHeap());
+    Serial.print("Sessao atual: ");
     Serial.println(getSessaoId());
+
+    JsonDocument doc;
+    String body;
 
     doc["sessaoId"] = getSessaoId();
     doc["temperaturaAtual"] = temperaturaAtual;
@@ -651,11 +642,9 @@ void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, 
         body,
         &resposta);
 
-    Serial.printf("Código: %d\n", code);
+    Serial.printf("Código envio temperatura: %d\n", code);
     Serial.println("Resposta:");
     Serial.println(resposta);
-
-    Serial.printf("Envio temperatura: %d\n", code);
 }
 
 // ==========================
@@ -681,7 +670,7 @@ void enviarEvento(String tipo)
     serializeJson(doc, body);
 
     int code = enviarRequisicaoHTTP(
-        URL_EVENTOS,
+        String(API_BASE_URL) + "/v1/eventos",
         "POST",
         body,
         nullptr);

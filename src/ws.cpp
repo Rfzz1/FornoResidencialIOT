@@ -41,7 +41,8 @@ void taskWebSocket(void *parameter)
 
                 Serial.println("[WS] Tentando reconectar ao servidor WebSocket...");
                 webSocket.setExtraHeaders("Origin: https://monitoramentoforno.com.br");
-                webSocket.beginSSL("monitoramentoforno.com.br", 443, "/v1/ws/" + condicoes.serialNumber + "/fornos" + "?token=" + token, "");
+                String urlWebSocket = "/v1/ws/" + condicoes.serialNumber + "/fornos?token=" + token;
+                webSocket.beginSslWithCA("monitoramentoforno.com.br", 443, urlWebSocket.c_str(), ROOT_CA);
                 webSocket.enableHeartbeat(3000, 10000, 5); // Envia heartbeat a cada 3 segundos, timeout de 10 segundos, tenta reconectar 5 vezes
                 webSocket.setReconnectInterval(5000);      // Tenta reconectar a cada 5 segundos
 
