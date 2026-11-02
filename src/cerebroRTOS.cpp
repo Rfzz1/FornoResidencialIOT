@@ -19,14 +19,14 @@ void taskCerebro(void *parameter)
 
         xQueueReceive(temperaturaQueue, &temperaturaAtual, portMAX_DELAY);
 
-        dados.ULTIMA_TEMP = dados.TEMP_ATUAL;
+        condicoes.ULTIMA_TEMP = condicoes.TEMP_ATUAL;
 
-        dados.TEMP_ATUAL = temperaturaAtual;
+        condicoes.TEMP_ATUAL = temperaturaAtual;
 
         if (temperaturaValida())
         {
 
-            Serial.printf("Temperatura atual: %.2f °C\n", dados.TEMP_ATUAL);
+            Serial.printf("Temperatura atual: %.2f °C\n", condicoes.TEMP_ATUAL);
         }
         else
         {
@@ -42,7 +42,7 @@ void taskCerebro(void *parameter)
 
         //---- Eventos ----
 
-        if (novoEstadoLido != dados.estadoAtual)
+        if (novoEstadoLido != condicoes.estadoAtual)
         {
 
             eventoSistema evento;
@@ -54,17 +54,17 @@ void taskCerebro(void *parameter)
 
                 // Se o novo estado lido estiver segureo e o estado atual for lido como 'ALERTA', quer dizer que entrou em alerta e assim segue para os outros estados
 
-                if (dados.estadoAtual == ALERTA)
+                if (condicoes.estadoAtual == ALERTA)
                 {
 
                     evento = ALERTA_SAIDA;
                 }
-                else if (dados.estadoAtual == CRITICO)
+                else if (condicoes.estadoAtual == CRITICO)
                 {
 
                     evento = CRITICO_SAIDA;
                 }
-                else if (dados.estadoAtual == ERRO_SENSOR)
+                else if (condicoes.estadoAtual == ERRO_SENSOR)
                 {
 
                     evento = ERRO_SENSOR_SAIDA;
@@ -74,17 +74,17 @@ void taskCerebro(void *parameter)
 
             case ALERTA:
 
-                if (dados.estadoAtual == SEGURO)
+                if (condicoes.estadoAtual == SEGURO)
                 {
 
                     evento = ALERTA_ENTRADA;
                 }
-                else if (dados.estadoAtual == CRITICO)
+                else if (condicoes.estadoAtual == CRITICO)
                 {
 
                     evento = CRITICO_SAIDA;
                 }
-                else if (dados.estadoAtual == ERRO_SENSOR)
+                else if (condicoes.estadoAtual == ERRO_SENSOR)
                 {
 
                     evento = ERRO_SENSOR_SAIDA;
@@ -94,17 +94,17 @@ void taskCerebro(void *parameter)
 
             case CRITICO:
 
-                if (dados.estadoAtual == SEGURO)
+                if (condicoes.estadoAtual == SEGURO)
                 {
 
                     evento = CRITICO_ENTRADA;
                 }
-                else if (dados.estadoAtual == ALERTA)
+                else if (condicoes.estadoAtual == ALERTA)
                 {
 
                     evento = ALERTA_SAIDA;
                 }
-                else if (dados.estadoAtual == ERRO_SENSOR)
+                else if (condicoes.estadoAtual == ERRO_SENSOR)
                 {
 
                     evento = ERRO_SENSOR_SAIDA;
@@ -114,17 +114,17 @@ void taskCerebro(void *parameter)
 
             case ERRO_SENSOR:
 
-                if (dados.estadoAtual == SEGURO)
+                if (condicoes.estadoAtual == SEGURO)
                 {
 
                     evento = ERRO_SENSOR_ENTRADA;
                 }
-                else if (dados.estadoAtual == ALERTA)
+                else if (condicoes.estadoAtual == ALERTA)
                 {
 
                     evento = ALERTA_SAIDA;
                 }
-                else if (dados.estadoAtual == CRITICO)
+                else if (condicoes.estadoAtual == CRITICO)
                 {
 
                     evento = CRITICO_SAIDA;
@@ -137,12 +137,12 @@ void taskCerebro(void *parameter)
 
             xSemaphoreTake(mutexEstadoSistema, portMAX_DELAY);
 
-            dados.estadoAtual = novoEstadoLido; // Onde o estado do sistema está nesse momento (passado recente) - último registro do estado do sistema
+            condicoes.estadoAtual = novoEstadoLido; // Onde o estado do sistema está nesse momento (passado recente) - último registro do estado do sistema
 
             xSemaphoreGive(mutexEstadoSistema);
         }
 
-        if (novoEstadoFornoLido != dados.estadoFornoAtual)
+        if (novoEstadoFornoLido != condicoes.estadoFornoAtual)
         {
 
             //---- Estado ----
@@ -151,8 +151,8 @@ void taskCerebro(void *parameter)
 
             xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
 
-            dados.estadoFornoAnterior = dados.estadoFornoAtual;
-            dados.estadoFornoAtual = novoEstadoFornoLido; // Onde o estado do forno está nesse momento (passado recente) - último registro
+            condicoes.estadoFornoAnterior = condicoes.estadoFornoAtual;
+            condicoes.estadoFornoAtual = novoEstadoFornoLido; // Onde o estado do forno está nesse momento (passado recente) - último registro
 
             xSemaphoreGive(mutexEstadoForno);
         }

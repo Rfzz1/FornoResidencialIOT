@@ -31,7 +31,7 @@ void onMessageCallback(WebsocketsMessage message)
             // Protegendo a alteração da variável global com o Mutex
             if (xSemaphoreTake(mutexEstadoSistema, portMAX_DELAY) == pdTRUE)
             {
-                dados.buzzerMutado = true;
+                condicoes.buzzerMutado = true;
                 xSemaphoreGive(mutexEstadoSistema);
             }
         }
@@ -48,7 +48,7 @@ void inicializarWebSocket()
     Serial.println("[WS] Inicializando conexão segura...");
     wsClient.setInsecure(); // Ignora validação SSL
     wsClient.onMessage(onMessageCallback);
-    String urlCompleta = String(WS_URL) + dados.serialNumber;
+    String urlCompleta = String(WS_URL) + condicoes.serialNumber;
 
     if (wsClient.connect(urlCompleta))
     {
@@ -79,46 +79,53 @@ void processarWebSocket()
             ultimaTentativaWs = millis();
             Serial.println("[WS] Tentando reconectar...");
 
-            String urlCompleta = String(WS_URL) + dados.serialNumber;
+            String urlCompleta = String(WS_URL) + condicoes.serialNumber;
             wsClient.connect(urlCompleta);
         }
     }
 }
 
-void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t * texto, size_t tamanho) {
-    switch (tipoEvento) {
-        case WStype_CONNECTED:
-            Serial.println("[WS] Conectado ao servidor WebSocket.");
-            break;
-        case WStype_DISCONNECTED:
-            Serial.println("[WS] Desconectado do servidor WebSocket.");
-            break;
-        case WStype_TEXT: {
-            Serial.println("[WS] Mensagem de texto recebida.");
+void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t *texto, size_t tamanho)
+{
+    switch (tipoEvento)
+    {
+    case WStype_CONNECTED:
+        Serial.println("[WS] Conectado ao servidor WebSocket.");
+        break;
+    case WStype_DISCONNECTED:
+        Serial.println("[WS] Desconectado do servidor WebSocket.");
+        break;
+    case WStype_TEXT:
+    {
+        Serial.println("[WS] Mensagem de texto recebida.");
 
-            JsonDocument doc;
+        JsonDocument doc;
 
-            DeserializationError error = deserializeJson(doc, texto, tamanho);
+        DeserializationError error = deserializeJson(doc, texto, tamanho);
 
-            if (error) {
-                Serial.print("[WS] Erro ao desserializar JSON: ");
-                Serial.println(error.f_str());
-                return;
-            }
-
-            const char* acao = doc["acao"];
-            boolean muted = doc["muted"];
-
-            if (acao && strcmp(acao, "MUTE") == 0 && muted) {
-                Serial.println("[WS] Comando MUTE recebido!");
-            } else {
-                Serial.println("[WS] Comando desconhecido ou inválido.");
-            }
-            break;
+        if (error)
+        {
+            Serial.print("[WS] Erro ao desserializar JSON: ");
+            Serial.println(error.f_str());
+            return;
         }
 
-        default:
-            Serial.println("[WS] Evento desconhecido recebido.");
-            break;
+        const char *acao = doc["acao"];
+        boolean muted = doc["muted"];
+
+        if (acao && strcmp(acao, "MUTE") == 0 && muted)
+        {
+            Serial.println("[WS] Comando MUTE recebido!");
+        }
+        else
+        {
+            Serial.println("[WS] Comando desconhecido ou inválido.");
+        }
+        break;
+    }
+
+    default:
+        Serial.println("[WS] Evento desconhecido recebido.");
+        break;
     }
 }

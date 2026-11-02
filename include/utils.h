@@ -14,17 +14,6 @@ enum eventoSistema {
         ERRO_SENSOR_SAIDA
     };
 
-    enum eventoForno {
-        FORNO_DESLIGADO_ENTRADA,
-        FORNO_DESLIGADO_SAIDA,
-        FORNO_AQUECENDO_ENTRADA,
-        FORNO_AQUECENDO_SAIDA,
-        FORNO_ATIVO_ENTRADA,
-        FORNO_ATIVO_SAIDA,
-        FORNO_ESFRIANDO_ENTRADA,
-        FORNO_ESFRIANDO_SAIDA
-    };
-
 String obterEstadoSistemaTexto(estadoSistema estado);
 String obterEstadoFornoTexto(estadoForno estado);
 String obterEventoSistemaTexto(eventoSistema eventoSistema);

@@ -5,7 +5,7 @@
     #include "estados.h"
 
 
-    struct Telemetria {
+    struct CondicoesDispositivo {
         bool estadoPisca = false;
         bool estadoBuzzerPisca = false;
         bool buzzerAtivaHorario = false;
@@ -17,7 +17,7 @@
 
         float TEMP_ATUAL = 0;
         float ULTIMA_TEMP = 0;
-        float TEMP_EXT_ATUAL = 0;
+
         uint32_t tempoLigadoHoras = 0;
         uint32_t tempoLigadoMinutos = 0;
 
@@ -49,5 +49,5 @@
         String deviceSecret;
     };
 
-extern Telemetria dados;
+extern CondicoesDispositivo condicoes;
 #endif

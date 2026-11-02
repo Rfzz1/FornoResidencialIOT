@@ -8,6 +8,5 @@ void inicializarBluetooth();
 void inicializarPreferences();
 void processarBluetooth();
 void verificarReiniciar();
-void salvarSecretBluetooth(String recebidoDoTerminal);
 
 #endif

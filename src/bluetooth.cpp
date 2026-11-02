@@ -9,79 +9,73 @@ static bool aguardandoReinicio = false;
 static unsigned long tempoInicioReinicio = 0;
 static bool bluetoothConectado = false;
 
-void taskBluetooth(void *parameter) {
+void taskBluetooth(void *parameter)
+{
 
-    for (;;) {
+    for (;;)
+    {
 
-        if (bluetoothConectado == true) {
+        if (bluetoothConectado == true)
+        {
             processarBluetooth();
             verificarReiniciar();
         }
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-
 }
 
-void salvarSecretBluetooth(String recebidoDoTerminal) {
-    String secretLimpa = "";
-    for (char c : recebidoDoTerminal) {
-        if (isAlphaNumeric(c) || c == '-') { 
-            secretLimpa += c;
-        }
-    }
-    // Salva a versão limpa nas Preferences
-    preferences.putString("secret", secretLimpa); 
-    dados.deviceSecret = secretLimpa;
-    Serial.println("Nova secret salva com sucesso!");
-}
-
-
-void inicializarBluetooth() {
+void inicializarBluetooth()
+{
     SerialBT.begin("MonitorForno2");
     bluetoothConectado = true;
     Serial.println("Bluetooth iniciado.");
 }
 
-void inicializarPreferences() {
+void inicializarPreferences()
+{
 
     Serial.println("Abrindo Preferences...");
 
-    if (!preferences.begin("forno", false)) {
+    if (!preferences.begin("forno", false))
+    {
         Serial.println("Falha ao iniciar Preferences");
         return;
     }
 
-    dados.serialNumber = preferences.getString("serialNumber", "");
-    dados.deviceSecret = preferences.getString("secret", "");
+    condicoes.serialNumber = preferences.getString("serialNumber", "");
+    condicoes.deviceSecret = preferences.getString("secret", "");
 
     Serial.println("Secret salva:");
-    Serial.println(dados.deviceSecret);
+    Serial.println(condicoes.deviceSecret);
 
-    if (dados.serialNumber.isEmpty()) {
-        dados.serialNumber = WiFi.macAddress();
-        dados.serialNumber.replace(":", "");
-        preferences.putString("serialNumber", dados.serialNumber);
+    if (condicoes.serialNumber.isEmpty())
+    {
+        condicoes.serialNumber = WiFi.macAddress();
+        condicoes.serialNumber.replace(":", "");
+        preferences.putString("serialNumber", condicoes.serialNumber);
     }
 
-
-    Serial.println("Serial: " + dados.serialNumber);
+    Serial.println("Serial: " + condicoes.serialNumber);
 }
 
 // ==========================
 // BLUETOOTH PROCESS
 // ==========================
 
-void processarBluetooth() {
+void processarBluetooth()
+{
 
     static bool conectado = false;
 
-    if (SerialBT.hasClient() && !conectado) {
+    if (SerialBT.hasClient() && !conectado)
+    {
         conectado = true;
         Serial.println("Bluetooth conectado");
     }
 
-    if (!SerialBT.hasClient()) {
+    if (!SerialBT.hasClient())
+    {
         conectado = false;
         return;
     }
@@ -92,7 +86,8 @@ void processarBluetooth() {
     String cmd = SerialBT.readStringUntil('\n');
     cmd.trim();
 
-    if (cmd == "GET_SERIAL") {
+    if (cmd == "GET_SERIAL")
+    {
 
         String s = WiFi.macAddress();
         s.replace(":", "");
@@ -100,10 +95,11 @@ void processarBluetooth() {
         return;
     }
 
-    if (cmd.startsWith("SET_SECRET:")) {
+    if (cmd.startsWith("SET_SECRET:"))
+    {
 
-        dados.deviceSecret = cmd.substring(11);
-        preferences.putString("secret", dados.deviceSecret);
+        condicoes.deviceSecret = cmd.substring(11);
+        preferences.putString("secret", condicoes.deviceSecret);
 
         SerialBT.println("OK");
 
@@ -111,7 +107,8 @@ void processarBluetooth() {
         aguardandoReinicio = true;
     }
 
-    if (cmd == "CLEAR_SECRET") {
+    if (cmd == "CLEAR_SECRET")
+    {
         preferences.remove("secret");
         SerialBT.println("SECRET_REMOVIDO");
         delay(1000);
@@ -123,9 +120,11 @@ void processarBluetooth() {
 // CONTROLE
 // ==========================
 
-void verificarReiniciar() {
+void verificarReiniciar()
+{
     if (aguardandoReinicio &&
-        millis() - tempoInicioReinicio >= 2000) {
+        millis() - tempoInicioReinicio >= 2000)
+    {
         ESP.restart();
     }
 }

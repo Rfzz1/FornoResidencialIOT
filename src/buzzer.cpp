@@ -5,91 +5,82 @@
 
 static unsigned long milisBuzzerErro = 0;
 static unsigned long milisBuzzerAlerta = 0;
-static unsigned long milisBuzzerHorario = 0;
 
-void desligarBuzzer() {
+void desligarBuzzer()
+{
 
   digitalWrite(BUZZER, LOW);
-
 }
 
-void buzzerHorarioAlarme() {
+void buzzerErroSensor()
+{
 
-  if (millis() - milisBuzzerHorario >= 1000) {
-
-    milisBuzzerHorario = millis();
-
-    dados.buzzerAtivaHorario = !dados.buzzerAtivaHorario;
-
-    digitalWrite(BUZZER, dados.buzzerAtivaHorario);
-
-  }
-
-}
-
-void buzzerErroSensor() {
-
-  if (millis() - milisBuzzerErro >= 500) {
+  if (millis() - milisBuzzerErro >= 500)
+  {
 
     milisBuzzerErro = millis();
 
-    dados.estadoBuzzerPisca = !dados.estadoBuzzerPisca;
+    condicoes.estadoBuzzerPisca = !condicoes.estadoBuzzerPisca;
 
-    digitalWrite(BUZZER, dados.estadoBuzzerPisca);
-
+    digitalWrite(BUZZER, condicoes.estadoBuzzerPisca);
   }
 }
 
-void buzzerAlerta() {
+void buzzerAlerta()
+{
 
-  if (millis() - milisBuzzerAlerta >= 2000) {
+  if (millis() - milisBuzzerAlerta >= 2000)
+  {
 
     milisBuzzerAlerta = millis();
 
-    dados.estadoBuzzerPisca = !dados.estadoBuzzerPisca;
+    condicoes.estadoBuzzerPisca = !condicoes.estadoBuzzerPisca;
 
-    digitalWrite(BUZZER, dados.estadoBuzzerPisca);
-
+    digitalWrite(BUZZER, condicoes.estadoBuzzerPisca);
   }
 }
 
-void buzzerCritico() {
+void buzzerCritico()
+{
 
   digitalWrite(BUZZER, HIGH);
-
 }
 
-void atualizarBuzzer(estadoSistema estadoAtual) {
+void atualizarBuzzer(estadoSistema estadoAtual)
+{
 
-  if (dados.estadoAtual != CRITICO && dados.estadoAtual != ALERTA && dados.estadoAtual != ERRO_SENSOR) {
-    dados.buzzerMutado = false;
+  if (condicoes.estadoAtual != CRITICO && condicoes.estadoAtual != ALERTA && condicoes.estadoAtual != ERRO_SENSOR)
+  {
+    condicoes.buzzerMutado = false;
   }
 
-  if (dados.buzzerMutado) {
+  if (condicoes.buzzerMutado)
+  {
     desligarBuzzer();
     return;
   }
 
-  switch (estadoAtual) {
+  switch (estadoAtual)
+  {
 
-    case CRITICO:
+  case CRITICO:
 
-      buzzerCritico();
-      break;
+    buzzerCritico();
+    break;
 
-    case ALERTA:
+  case ALERTA:
 
-      buzzerAlerta();
-      break;
+    buzzerAlerta();
+    break;
 
-    case ERRO_SENSOR:
+  case ERRO_SENSOR:
 
-      buzzerErroSensor();
-      break;
+    buzzerErroSensor();
+    break;
 
-    default:
+  default:
 
-      desligarBuzzer();
-      break;
+    desligarBuzzer();
+    break;
   }
 }

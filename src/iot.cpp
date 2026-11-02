@@ -13,21 +13,22 @@ static unsigned long milisEstabilizarWiFi = 0;
 static unsigned long tentativaNTP = 0;
 unsigned long ultimoTesteWiFi = 0;
 
-
-void taskConectividade(void *parameter) {
+void taskConectividade(void *parameter)
+{
     conectarWiFi();
 
-    for (;;) {
+    for (;;)
+    {
 
         verificarWiFi();
         estabilizarHoraLocal();
         atualizarHorarioAlarme();
         vTaskDelay(100 / portTICK_PERIOD_MS);
-
     }
 }
 
-void conectarWiFi() {
+void conectarWiFi()
+{
     WiFi.begin(ssid, pass);
 
     Serial.println("Conectando...");
@@ -35,14 +36,17 @@ void conectarWiFi() {
     unsigned long inicioTentativa = millis();
     const unsigned long TIMEOUT_WIFI = 15000;
 
-    while (WiFi.status() != WL_CONNECTED) {
+    while (WiFi.status() != WL_CONNECTED)
+    {
 
-        if(millis() - inicioTentativa >= TIMEOUT_WIFI) {
+        if (millis() - inicioTentativa >= TIMEOUT_WIFI)
+        {
             Serial.println("Timeout ao conectar Wi-Fi. Operando offline.");
             return;
         }
 
-        if (millis() - milisEstabilizarWiFi >= 1000) {
+        if (millis() - milisEstabilizarWiFi >= 1000)
+        {
             milisEstabilizarWiFi = millis();
             Serial.print(".");
         }
@@ -65,7 +69,8 @@ void conectarWiFi() {
     printLocalTime();
 }
 
-void verificarWiFi() {
+void verificarWiFi()
+{
 
     if (millis() - ultimoTesteWiFi < 5000)
         return;
@@ -80,92 +85,103 @@ void verificarWiFi() {
     WiFi.disconnect();
 
     WiFi.begin(ssid, pass);
-
 }
 
-void configurarNTP() {
+void configurarNTP()
+{
     configTime(
-    -10800,
-    0,
-    "time.google.com",
-    "time.cloudflare.com",
-    "pool.ntp.org"
-);
+        -10800,
+        0,
+        "time.google.com",
+        "time.cloudflare.com",
+        "pool.ntp.org");
 }
 
-void estabilizarHoraLocal() {
+void estabilizarHoraLocal()
+{
 
     struct tm timeinfo;
 
-    if (dados.horaSincronizada) {
+    if (condicoes.horaSincronizada)
+    {
         return;
     }
 
-
-    if (millis() - tentativaNTP >= 1000) {
+    if (millis() - tentativaNTP >= 1000)
+    {
         tentativaNTP = millis();
-    
-        if (getLocalTime(&timeinfo, 10000)) {
 
-            dados.horaSincronizada = true;
+        if (getLocalTime(&timeinfo, 10000))
+        {
+
+            condicoes.horaSincronizada = true;
             Serial.println("Hora local sincronizada.");
-
-        } else {
+        }
+        else
+        {
 
             Serial.println("Obtendo hora local...");
         }
     }
-    if (millis() - dados.inicioTentativa >= 10000 && !dados.horaSincronizada && !dados.timeoutNTP) {
+    if (millis() - condicoes.inicioTentativa >= 10000 && !condicoes.horaSincronizada && !condicoes.timeoutNTP)
+    {
 
-        dados.timeoutNTP = true;
+        condicoes.timeoutNTP = true;
         Serial.println("Falha ao sincronizar NTP.");
     }
 }
 
-void printLocalTime() {
+void printLocalTime()
+{
     struct tm infoHoraLocal;
 
-    if (getLocalTime(&infoHoraLocal) && millis() - milisAtualizarHoraLocal >= 1000) {
+    if (getLocalTime(&infoHoraLocal) && millis() - milisAtualizarHoraLocal >= 1000)
+    {
         milisAtualizarHoraLocal = millis();
 
-        dados.HoraAtual = infoHoraLocal.tm_hour;
-        dados.MinutoAtual = infoHoraLocal.tm_min;
-        dados.SegundoAtual = infoHoraLocal.tm_sec;
+        condicoes.HoraAtual = infoHoraLocal.tm_hour;
+        condicoes.MinutoAtual = infoHoraLocal.tm_min;
+        condicoes.SegundoAtual = infoHoraLocal.tm_sec;
 
         Serial.printf(
             "%02d:%02d:%02d\n",
-            dados.HoraAtual,
-            dados.MinutoAtual,
-            dados.SegundoAtual
-        );
+            condicoes.HoraAtual,
+            condicoes.MinutoAtual,
+            condicoes.SegundoAtual);
     }
 }
 
-String obterHorarioFormatado() {
+String obterHorarioFormatado()
+{
 
     char buffer[20];
 
     sprintf(
         buffer,
         "%02d:%02d:%02d",
-        dados.HoraAtual,
-        dados.MinutoAtual,
-        dados.SegundoAtual
-    );
+        condicoes.HoraAtual,
+        condicoes.MinutoAtual,
+        condicoes.SegundoAtual);
 
     return String(buffer);
 }
 
-void verificarHorarioAlarme() {
-    if (dados.HoraAtual == dados.HoraFim && dados.MinutoAtual == dados.MinutoFim) {
-            dados.buzzerAtivaHorario = true;
-        } else {
-            dados.buzzerAtivaHorario = false;
-        }
+void verificarHorarioAlarme()
+{
+    if (condicoes.HoraAtual == condicoes.HoraFim && condicoes.MinutoAtual == condicoes.MinutoFim)
+    {
+        condicoes.buzzerAtivaHorario = true;
+    }
+    else
+    {
+        condicoes.buzzerAtivaHorario = false;
+    }
 }
 
-void atualizarHorarioAlarme() {
-    if (millis() - milisAtualizarHorarioAlarme >= 1000) {
+void atualizarHorarioAlarme()
+{
+    if (millis() - milisAtualizarHorarioAlarme >= 1000)
+    {
         milisAtualizarHorarioAlarme = millis();
         verificarHorarioAlarme();
     }

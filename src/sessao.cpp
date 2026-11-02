@@ -12,18 +12,15 @@ static uint32_t ultimoSegundoExibido = 0;
 void taskSessao(void *parameter)
 {
 
-  static estadoForno estadoFornoAnterior = dados.estadoFornoAnterior;
-  static estadoForno estadoFornoAtual = dados.estadoFornoAtual;
-
   for (;;)
   {
 
-    tratarInicioSessao(estadoFornoAtual, estadoFornoAnterior);
-    tratarFimSessao(estadoFornoAtual, estadoFornoAnterior);
+    tratarInicioSessao(condicoes.estadoFornoAtual, condicoes.estadoFornoAnterior);
+    tratarFimSessao(condicoes.estadoFornoAtual, condicoes.estadoFornoAnterior);
     tratarTempoSessao();
 
-    estadoFornoAnterior = estadoFornoAtual;
-    estadoFornoAtual = dados.estadoFornoAtual;
+    condicoes.estadoFornoAnterior = condicoes.estadoFornoAtual;
+    condicoes.estadoFornoAtual = definirEstadoForno();
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
@@ -32,25 +29,26 @@ void taskSessao(void *parameter)
 void tratarInicioSessao(estadoForno estadoFornoAtual, estadoForno estadoFornoAnterior)
 {
 
-  if (estadoFornoAtual != FORNO_DESLIGADO && estadoFornoAnterior == FORNO_DESLIGADO) {
+  if (estadoFornoAtual != FORNO_DESLIGADO && estadoFornoAnterior == FORNO_DESLIGADO)
+  {
 
     milisInicioSessao = millis();
     Serial.println("Sessao iniciada!");
-
   }
 }
 
-void tratarFimSessao(estadoForno estadoFornoAtual, estadoForno estadoFornoAnterior) {
+void tratarFimSessao(estadoForno estadoFornoAtual, estadoForno estadoFornoAnterior)
+{
 
-  if (estadoFornoAnterior != FORNO_DESLIGADO && estadoFornoAtual == FORNO_DESLIGADO) {
+  if (estadoFornoAnterior != FORNO_DESLIGADO && estadoFornoAtual == FORNO_DESLIGADO)
+  {
 
     Serial.println("Sessao encerrada!");
     Serial.print("Tempo total ligado: ");
-    Serial.print(dados.tempoLigadoSegundos);
+    Serial.print(condicoes.tempoLigadoSegundos);
     Serial.println(" segundos");
     tempoLigado = 0;
-    dados.tempoLigadoSegundos = 0;
-
+    condicoes.tempoLigadoSegundos = 0;
   }
 }
 
@@ -61,7 +59,8 @@ void tratarTempoSessao()
 
   // Agora sim podemos usar o return com segurança, DEPOIS de verificar se ele acabou de desligar.
 
-  if (dados.estadoFornoAtual == FORNO_DESLIGADO) {
+  if (condicoes.estadoFornoAtual == FORNO_DESLIGADO)
+  {
     return;
   }
 
@@ -69,16 +68,16 @@ void tratarTempoSessao()
 
   tempoLigado = millis() - milisInicioSessao;
 
-  dados.tempoLigadoSegundos = tempoLigado / 1000;
-  dados.tempoLigadoMinutos = dados.tempoLigadoSegundos / 60;
-  dados.tempoLigadoHoras = dados.tempoLigadoMinutos / 60;
+  condicoes.tempoLigadoSegundos = tempoLigado / 1000;
+  condicoes.tempoLigadoMinutos = condicoes.tempoLigadoSegundos / 60;
+  condicoes.tempoLigadoHoras = condicoes.tempoLigadoMinutos / 60;
 
-  if (dados.tempoLigadoSegundos != ultimoSegundoExibido)
+  if (condicoes.tempoLigadoSegundos != ultimoSegundoExibido)
   {
 
-    ultimoSegundoExibido = dados.tempoLigadoSegundos;
+    ultimoSegundoExibido = condicoes.tempoLigadoSegundos;
     Serial.print("Tempo ligado: ");
-    Serial.print(dados.tempoLigadoSegundos);
+    Serial.print(condicoes.tempoLigadoSegundos);
     Serial.println(" segundos");
 
     if (millis() - milisUltimaAtualizacao >= 10000)

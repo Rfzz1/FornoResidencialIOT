@@ -43,7 +43,7 @@ void taskNuvem(void *parameter)
 
     uint32_t tempoLigadoMin = 0;
 
-    static estadoForno estadoFornoAnterior = dados.estadoFornoAnterior;
+    static estadoForno estadoFornoAnterior = condicoes.estadoFornoAnterior;
 
     eventoSistema evento;
 
@@ -54,15 +54,15 @@ void taskNuvem(void *parameter)
 
         xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
 
-        temperaturaAtualQueue = dados.TEMP_ATUAL;
+        temperaturaAtualQueue = condicoes.TEMP_ATUAL;
 
-        temperaturaUltimaQueue = dados.ULTIMA_TEMP;
+        temperaturaUltimaQueue = condicoes.ULTIMA_TEMP;
 
-        estadoSistemaTexto = obterEstadoSistemaTexto(dados.estadoAtual);
+        estadoSistemaTexto = obterEstadoSistemaTexto(condicoes.estadoAtual);
 
-        estadoFornoTexto = obterEstadoFornoTexto(dados.estadoFornoAtual);
+        estadoFornoTexto = obterEstadoFornoTexto(condicoes.estadoFornoAtual);
 
-        tempoLigadoMin = dados.tempoLigadoMinutos;
+        tempoLigadoMin = condicoes.tempoLigadoMinutos;
 
         xSemaphoreGive(mutexTelemetria);
 
@@ -219,14 +219,14 @@ void fazerLogin()
     http.addHeader("Content-Type", "application/json");
 
     // Limpeza da secret (aqui está o corte dos 36 caracteres para garantir)
-    String secretLimpa = dados.deviceSecret;
+    String secretLimpa = condicoes.deviceSecret;
     secretLimpa.trim();
     if (secretLimpa.length() > 36)
     {
         secretLimpa = secretLimpa.substring(0, 36);
     }
     doc["secret"] = secretLimpa;
-    doc["serialNumber"] = dados.serialNumber;
+    doc["serialNumber"] = condicoes.serialNumber;
 
     String jsonOutput;
 
@@ -507,8 +507,8 @@ void encerrarSessao()
     String body;
     JsonDocument doc;
 
-    doc["estadoSistemaFinal"] = obterEstadoSistemaTexto(dados.estadoAtual);
-    doc["estadoFornoFinal"] = obterEstadoFornoTexto(dados.estadoFornoAtual);
+    doc["estadoSistemaFinal"] = obterEstadoSistemaTexto(condicoes.estadoAtual);
+    doc["estadoFornoFinal"] = obterEstadoFornoTexto(condicoes.estadoFornoAtual);
 
     serializeJson(doc, body);
 
@@ -537,8 +537,8 @@ void atualizarSessao()
     String body;
     JsonDocument doc;
 
-    doc["estadoSistemaAtual"] = obterEstadoSistemaTexto(dados.estadoAtual);
-    doc["estadoFornoAtual"] = obterEstadoFornoTexto(dados.estadoFornoAtual);
+    doc["estadoSistemaAtual"] = obterEstadoSistemaTexto(condicoes.estadoAtual);
+    doc["estadoFornoAtual"] = obterEstadoFornoTexto(condicoes.estadoFornoAtual);
 
     serializeJson(doc, body);
 
@@ -707,7 +707,7 @@ void verificarEstadoDispositivo()
 
     if (preferences.getString("secret", "").isEmpty())
     {
-        dados.espConfigurado = false;
+        condicoes.espConfigurado = false;
 
         JsonDocument doc;
         HTTPClient http;
@@ -716,7 +716,7 @@ void verificarEstadoDispositivo()
         http.begin(client, String(API_BASE_URL) + "/v1/fornos/auto-provisionar");
         http.addHeader("Content-Type", "application/json");
 
-        doc["serialNumber"] = dados.serialNumber;
+        doc["serialNumber"] = condicoes.serialNumber;
 
         String jsonOutput;
         serializeJson(doc, jsonOutput);
@@ -736,8 +736,8 @@ void verificarEstadoDispositivo()
             String secretRecebida = resDoc["secret"].as<String>(); // Extrai a secret do JSON
             preferences.putString("secret", secretRecebida);       // Salva na memória não-volátil
 
-            dados.deviceSecret = secretRecebida; // Atualiza variável global com a nova secret
-            dados.espConfigurado = true;
+            condicoes.deviceSecret = secretRecebida; // Atualiza variável global com a nova secret
+            condicoes.espConfigurado = true;
 
             Serial.println("Auto-provisionamento concluído com sucesso!");
 
@@ -757,7 +757,7 @@ void verificarEstadoDispositivo()
     }
     else
     {
-        dados.espConfigurado = true;
+        condicoes.espConfigurado = true;
         Serial.println("Dispositivo já provisionado. Iniciando rotina normal...");
         diagnosticoCompleto();
         fazerLogin();
