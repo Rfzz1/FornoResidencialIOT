@@ -10,24 +10,20 @@ static unsigned long tempoLigado = 0;
 static unsigned long milisUltimaAtualizacao = 0;
 static uint32_t ultimoSegundoExibido = 0;
 
-void taskSessao(void *parameter) {
+void taskSessao(void *parameter)
+{
 
-  static estadoForno estadoFornoAnterior = dados.estadoFornoAnterior;
-  static estadoForno estadoFornoAtual = dados.estadoFornoAtual;
+  for (;;)
+  {
 
+    tratarInicioSessao(condicoes.estadoFornoAtual, condicoes.estadoFornoAnterior);
+    tratarFimSessao(condicoes.estadoFornoAtual, condicoes.estadoFornoAnterior);
+    tratarTempoSessao();
 
-  for (;;) {
-      tratarInicioSessao(estadoFornoAtual, estadoFornoAnterior);
-      tratarFimSessao(estadoFornoAtual, estadoFornoAnterior);
+    condicoes.estadoFornoAnterior = condicoes.estadoFornoAtual;
+    condicoes.estadoFornoAtual = definirEstadoForno();
 
-      if (!getSessaoId().isEmpty()) {
-        tratarTempoSessao();
-      }
-
-      estadoFornoAnterior = estadoFornoAtual;
-      estadoFornoAtual = dados.estadoFornoAtual;
-
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 }
 
@@ -45,37 +41,41 @@ void tratarFimSessao(estadoForno estadoFornoAtual, estadoForno estadoFornoAnteri
       estadoFornoAtual == FORNO_DESLIGADO) {
     Serial.println("Sessao encerrada!");
     Serial.print("Tempo total ligado: ");
-    Serial.print(dados.tempoLigadoSegundos);
+    Serial.print(condicoes.tempoLigadoSegundos);
     Serial.println(" segundos");
-
     tempoLigado = 0;
-    dados.tempoLigadoSegundos = 0;
+    condicoes.tempoLigadoSegundos = 0;
   }
 }
 
 void tratarTempoSessao() {
 
-  // 3. Se o forno estiver desligado, não precisamos contar o tempo. 
   // Agora sim podemos usar o return com segurança, DEPOIS de verificar se ele acabou de desligar.
-  if (dados.estadoFornoAtual == FORNO_DESLIGADO) {
+
+  if (condicoes.estadoFornoAtual == FORNO_DESLIGADO)
+  {
     return;
   }
 
   // 4. Se chegou até aqui, o forno ESTÁ LIGADO. Atualiza o cronômetro.
+
   tempoLigado = millis() - milisInicioSessao;
-  
-  dados.tempoLigadoSegundos = tempoLigado / 1000;
-  dados.tempoLigadoMinutos = dados.tempoLigadoSegundos / 60;
-  dados.tempoLigadoHoras = dados.tempoLigadoMinutos / 60;
 
-  if (dados.tempoLigadoSegundos != ultimoSegundoExibido) {
-    ultimoSegundoExibido = dados.tempoLigadoSegundos;
+  condicoes.tempoLigadoSegundos = tempoLigado / 1000;
+  condicoes.tempoLigadoMinutos = condicoes.tempoLigadoSegundos / 60;
+  condicoes.tempoLigadoHoras = condicoes.tempoLigadoMinutos / 60;
 
+  if (condicoes.tempoLigadoSegundos != ultimoSegundoExibido)
+  {
+
+    ultimoSegundoExibido = condicoes.tempoLigadoSegundos;
     Serial.print("Tempo ligado: ");
-    Serial.print(dados.tempoLigadoSegundos);
+    Serial.print(condicoes.tempoLigadoSegundos);
     Serial.println(" segundos");
 
-    if (millis() - milisUltimaAtualizacao >= 10000) {
+    if (millis() - milisUltimaAtualizacao >= 10000)
+    {
+
       milisUltimaAtualizacao = millis();
       atualizarSessao();
     }

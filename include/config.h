@@ -14,8 +14,6 @@
 
 #define BUZZER 15
 
-#define TERMOSTATO 4
-
 #include <Arduino.h>
 #include <math.h>
 #include <MAX6675.h>
@@ -32,15 +30,15 @@ extern MAX6675 TERMOPAR;
 // =====================================================
 // CONSTANTES
 // =====================================================
+
 constexpr const char* API_BASE_URL = "https://monitoramentoforno.com.br";
 
-//protocolo "wss://" (WebSocket Seguro)
-constexpr const char* WS_URL = "wss://www.monitoramentoforno.com.br/ws/forno?serialNumber=";
+// protocolo "wss://" (WebSocket Seguro)
+constexpr const char *WS_URL = "wss://www.monitoramentoforno.com.br/ws/forno?serialNumber=";
 
-const String URL_EVENTOS = String(API_BASE_URL) + "/v1/eventos";
+constexpr const char *URL_EVENTOS = "http://monitoramentoforno.com.br/v1/eventos";
 const float TEMP_CRITICA_ENTRADA = 300;
 const float TEMP_CRITICA_SAIDA = 290;
-const float TEMP_EXT_MAXIMA = 80;
 
 const float TEMP_ALERTA_ENTRADA = 250;
 const float TEMP_ALERTA_SAIDA = 240;
@@ -49,11 +47,8 @@ const float TEMP_MAXIMA_VALIDA = 400;
 
 const float MARGEM_ESTABILIDADE = 2.0;
 
-constexpr const char* ntpServer = "pool.ntp.org";
-constexpr long  gmtOffset_sec = -10800; //CARLOS BARBOSA - GMT-3
-constexpr int   daylightOffset_sec = 0;
-
-const int TAMANHO_FILA_EVENTOS = 10;
+constexpr long gmtOffset_sec = -10800; // CARLOS BARBOSA - GMT-3
+constexpr int daylightOffset_sec = 0;
 
 //FreeRTOS
 

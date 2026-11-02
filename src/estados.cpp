@@ -9,113 +9,118 @@ static unsigned long milisDuracaoEstado = 0;
 static unsigned long milisUltimaJanela = 0;
 static double tempReferenciaJanela = 0;
 const unsigned long TEMPO_JANELA_TERMICA = 30000;
-estadoSistema estadoSistemaAtual;
-estadoForno estadoFornoAtual;
+
 estadoForno estadoFornoAnterior;
 
-estadoSistema definirEstadoSistema() {
+estadoSistema definirEstadoSistema()
+{
 
-  switch (estadoSistemaAtual) {
+  switch (condicoes.estadoAtual)
+  {
 
-    case INICIANDO:
+  case INICIANDO:
 
-      estadoSistemaAtual = SEGURO;
+    condicoes.estadoAtual = SEGURO;
 
-      break;
+    break;
 
-    case SEGURO:
+  case SEGURO:
 
-      if (dados.TEMP_ATUAL >= TEMP_ALERTA_ENTRADA) {
+    if (condicoes.TEMP_ATUAL >= TEMP_ALERTA_ENTRADA)
+    {
 
-        estadoSistemaAtual = ALERTA;
+      condicoes.estadoAtual = ALERTA;
+    }
 
-      }
+    break;
 
-      if (dados.TEMP_EXT_ATUAL >= TEMP_EXT_MAXIMA) {
+  case ALERTA:
 
-        estadoSistemaAtual = ALERTA;
+    if (condicoes.TEMP_ATUAL >= TEMP_CRITICA_ENTRADA)
+    {
 
-      }
+      condicoes.estadoAtual = CRITICO;
+    }
+    else if (condicoes.TEMP_ATUAL < TEMP_ALERTA_SAIDA)
+    {
+      condicoes.estadoAtual = SEGURO;
+    }
 
-      break;
+    break;
 
-    case ALERTA:
+  case CRITICO:
 
-      if (dados.TEMP_ATUAL >= TEMP_CRITICA_ENTRADA) {
+    if (condicoes.TEMP_ATUAL < TEMP_CRITICA_SAIDA)
+    {
 
-        estadoSistemaAtual = CRITICO;
+      condicoes.estadoAtual = ALERTA;
+    }
 
-      }
-      else if (dados.TEMP_ATUAL < TEMP_ALERTA_SAIDA && dados.TEMP_EXT_ATUAL < TEMP_EXT_MAXIMA) {
-        estadoSistemaAtual = SEGURO;
-      }
+    break;
 
-      break;
+  case ERRO_SENSOR:
 
-    case CRITICO:
+    if (temperaturaValida())
+    {
 
-      if (dados.TEMP_ATUAL < TEMP_CRITICA_SAIDA) {
+      condicoes.estadoAtual = SEGURO;
+    }
 
-        estadoSistemaAtual = ALERTA;
-
-      }
-
-      break;
-
-    case ERRO_SENSOR:
-
-      if (temperaturaValida()) {
-
-        estadoSistemaAtual = SEGURO;
-
-      }
-
-      break;
+    break;
   }
 
-  return estadoSistemaAtual;
+  return condicoes.estadoAtual;
 }
 
-estadoForno definirEstadoForno() {
-  estadoFornoAnterior = estadoFornoAtual;
+estadoForno definirEstadoForno()
+{
+  estadoFornoAnterior = condicoes.estadoFornoAtual;
 
   // 1. Estado Desligado: avaliado de forma imediata
-  if (dados.TEMP_ATUAL < 60) {
-    estadoFornoAtual = FORNO_DESLIGADO;
-    dados.sessaoIniciada = false;
+  if (condicoes.TEMP_ATUAL < 60)
+  {
+    condicoes.estadoFornoAtual = FORNO_DESLIGADO;
+    condicoes.sessaoIniciada = false;
     // Reseta a referência para evitar saltos bruscos caso o forno volte a ligar
-    tempReferenciaJanela = dados.TEMP_ATUAL;
+    tempReferenciaJanela = condicoes.TEMP_ATUAL;
 
-    return estadoFornoAtual;
+    return condicoes.estadoFornoAtual;
   }
 
   // 2. Inicializa a janela de referência na primeira execução válida
-  if (tempReferenciaJanela == 0) {
-    tempReferenciaJanela = dados.TEMP_ATUAL;
+  if (tempReferenciaJanela == 0)
+  {
+    tempReferenciaJanela = condicoes.TEMP_ATUAL;
     milisUltimaJanela = millis();
-    dados.sessaoIniciada = true;
+    condicoes.sessaoIniciada = true;
   }
 
   // 3. Avalia a tendência térmica apenas quando o tempo da janela expirar
-  if (millis() - milisUltimaJanela >= TEMPO_JANELA_TERMICA) {
-    
+  if (millis() - milisUltimaJanela >= TEMPO_JANELA_TERMICA)
+  {
+
     // Compara a temperatura de agora com a de 30 segundos atrás
-    if (dados.TEMP_ATUAL > tempReferenciaJanela + MARGEM_ESTABILIDADE) {
-      estadoFornoAtual = FORNO_AQUECENDO;
-      
-    } else if (dados.TEMP_ATUAL < tempReferenciaJanela - MARGEM_ESTABILIDADE) {
-      estadoFornoAtual = FORNO_ESFRIANDO;
-      
-    } else {
-      estadoFornoAtual = FORNO_ATIVO;
+    if (condicoes.TEMP_ATUAL > tempReferenciaJanela + MARGEM_ESTABILIDADE)
+    {
+      condicoes.estadoFornoAtual = FORNO_AQUECENDO;
+    }
+    else if (condicoes.TEMP_ATUAL < tempReferenciaJanela - MARGEM_ESTABILIDADE)
+    {
+      condicoes.estadoFornoAtual = FORNO_ESFRIANDO;
+    }
+    else
+    {
+      condicoes.estadoFornoAtual = FORNO_ATIVO;
     }
 
     // 4. Salva a temperatura e o tempo atuais para a próxima janela
-    tempReferenciaJanela = dados.TEMP_ATUAL;
+    tempReferenciaJanela = condicoes.TEMP_ATUAL;
     milisUltimaJanela = millis();
 
-    return estadoFornoAtual;
-  } else {
+    return condicoes.estadoFornoAtual;
+  }
+  else
+  {
     // 5. Se a janela ainda não expirou, mantém o estado anterior
     return estadoFornoAnterior;
   }

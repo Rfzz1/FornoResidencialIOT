@@ -1,3 +1,3 @@
 #include "telemetria.h"
 
-Telemetria dados;
+Telemetria condicoes;

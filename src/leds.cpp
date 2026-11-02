@@ -4,103 +4,90 @@
 #include "telemetria.h"
 
 static unsigned long milisPiscarLedErro = 0;
-static unsigned long milisPiscarLedAguardandoConfigBluetooth = 0;
 static unsigned long milisPiscarLedInicializacao = 0;
 
-void desligarLEDs() {
+void desligarLEDs()
+{
 
   digitalWrite(RED, LOW);
   digitalWrite(GREEN, LOW);
   digitalWrite(BLUE, LOW);
-
 }
 
-void piscarLedErro() {
+void piscarLedErro()
+{
 
-  if (millis() - milisPiscarLedErro >= 500) {
+  if (millis() - milisPiscarLedErro >= 500)
+  {
 
     milisPiscarLedErro = millis();
 
-    dados.estadoPisca = !dados.estadoPisca;
+    condicoes.estadoPisca = !condicoes.estadoPisca;
 
     desligarLEDs();
 
-    digitalWrite(RED, dados.estadoPisca);
-
+    digitalWrite(RED, condicoes.estadoPisca);
   }
 }
 
-void piscarLedAguardandoConfigBluetooth() {
-  
-  if (millis() - milisPiscarLedAguardandoConfigBluetooth >= 500) {
+void piscarLedInicializacao()
+{
 
-    milisPiscarLedAguardandoConfigBluetooth = millis();
-
-    dados.estadoPisca = !dados.estadoPisca;
-
-    desligarLEDs();
-
-    digitalWrite(GREEN, dados.estadoPisca);
-    digitalWrite(RED, dados.estadoPisca);
-
-  }
-}
-
-void piscarLedInicializacao() {
-
-  if (millis() - milisPiscarLedInicializacao >= 500) {
+  if (millis() - milisPiscarLedInicializacao >= 500)
+  {
 
     milisPiscarLedInicializacao = millis();
 
-    dados.estadoPisca = !dados.estadoPisca;
+    condicoes.estadoPisca = !condicoes.estadoPisca;
 
     desligarLEDs();
 
-    digitalWrite(RED, dados.estadoPisca);
-    digitalWrite(GREEN, dados.estadoPisca);
-
+    digitalWrite(RED, condicoes.estadoPisca);
+    digitalWrite(GREEN, condicoes.estadoPisca);
   }
 }
 
-void atualizarLEDs(estadoSistema estadoAtual) {
+void atualizarLEDs(estadoSistema estadoAtual)
+{
 
-  switch (estadoAtual) {
+  switch (estadoAtual)
+  {
 
-    case INICIANDO:
+  case INICIANDO:
 
-      piscarLedInicializacao();
+    piscarLedInicializacao();
 
-      break;
+    break;
 
-    case SEGURO:
+  case SEGURO:
 
-      desligarLEDs();
+    desligarLEDs();
 
-      digitalWrite(GREEN, HIGH);
+    digitalWrite(GREEN, HIGH);
 
-      break;
+    break;
 
-    case ALERTA:
+  case ALERTA:
 
-      desligarLEDs();
+    desligarLEDs();
 
-      digitalWrite(RED, HIGH);
-      digitalWrite(GREEN, HIGH);
+    digitalWrite(RED, HIGH);
+    digitalWrite(GREEN, HIGH);
 
-      break;
+    break;
 
-    case CRITICO:
+  case CRITICO:
 
-      desligarLEDs();
+    desligarLEDs();
 
-      digitalWrite(RED, HIGH);
+    digitalWrite(RED, HIGH);
 
-      break;
+    break;
 
-    case ERRO_SENSOR:
+  case ERRO_SENSOR:
 
-      piscarLedErro();
+    piscarLedErro();
 
-      break;
+    break;
   }
 }
