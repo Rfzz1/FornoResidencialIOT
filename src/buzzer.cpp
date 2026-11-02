@@ -11,18 +11,19 @@ void desligarBuzzer()
 {
 
   digitalWrite(BUZZER, LOW);
-
 }
 
-void dispararBuzzer() {
+void dispararBuzzer()
+{
 
-  if (millis() - milisBuzzerTemporizador >= 1200) {
+  if (millis() - milisBuzzerTemporizador >= 1200)
+  {
 
     milisBuzzerTemporizador = millis();
 
-    dados.buzzerTemporizadorPisca = !dados.buzzerTemporizadorPisca;
+    condicoes.buzzerTemporizadorPisca = !condicoes.buzzerTemporizadorPisca;
 
-    digitalWrite(BUZZER, dados.buzzerTemporizadorPisca);
+    digitalWrite(BUZZER, condicoes.buzzerTemporizadorPisca);
   }
 }
 
@@ -62,7 +63,8 @@ void buzzerCritico()
 
 void atualizarBuzzer(estadoSistema estadoAtual)
 {
-  switch (estadoAtual) {
+  switch (estadoAtual)
+  {
 
   case CRITICO:
 
@@ -78,7 +80,7 @@ void atualizarBuzzer(estadoSistema estadoAtual)
 
     buzzerErroSensor();
     break;
-      
+
   default:
     desligarBuzzer();
     break;

@@ -35,80 +35,92 @@ void taskAlertas(void *parameter)
     xSemaphoreGive(mutexEstadoSistema);
 
     xSemaphoreTake(mutexWebSocket, portMAX_DELAY);
-    buzzerMutado = dados.buzzerMutado;
+    buzzerMutado = condicoes.buzzerMutado;
 
     xSemaphoreGive(mutexWebSocket);
 
     xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
-    temporizadorLigado = dados.temporizadorLigado;
-    mensagemChegou = dados.mensagemChegou;
-    duracaoSegundosTemporizador = dados.duracaoSegundosTemporizador;
-    entrouDisparo = dados.entrouDisparo;
-    inicioDisparo = dados.inicioDisparo;
+    temporizadorLigado = condicoes.temporizadorLigado;
+    mensagemChegou = condicoes.mensagemChegou;
+    duracaoSegundosTemporizador = condicoes.duracaoSegundosTemporizador;
+    entrouDisparo = condicoes.entrouDisparo;
+    inicioDisparo = condicoes.inicioDisparo;
 
     xSemaphoreGive(mutexTemporizador);
 
-    if (estadoAnterior != estadoSistemaAtual) {
+    if (estadoAnterior != estadoSistemaAtual)
+    {
 
-      if ((estadoAnterior == CRITICO || estadoAnterior == ALERTA || estadoAnterior == ERRO_SENSOR) && estadoSistemaAtual == SEGURO) {
+      if ((estadoAnterior == CRITICO || estadoAnterior == ALERTA || estadoAnterior == ERRO_SENSOR) && estadoSistemaAtual == SEGURO)
+      {
 
         xSemaphoreTake(mutexWebSocket, portMAX_DELAY);
-          dados.buzzerMutado = false;
+        condicoes.buzzerMutado = false;
         xSemaphoreGive(mutexWebSocket);
       }
-
     }
 
     estadoAnterior = estadoSistemaAtual;
 
-    if (buzzerMutado) {
+    if (buzzerMutado)
+    {
       desligarBuzzer();
       pularBuzzerPadrao = true;
     }
 
-    if (temporizadorLigado) {
+    if (temporizadorLigado)
+    {
 
       agora = millis();
 
-      if ((agora - mensagemChegou)/1000 >= duracaoSegundosTemporizador) {
+      if ((agora - mensagemChegou) / 1000 >= duracaoSegundosTemporizador)
+      {
 
-          if (!buzzerMutado) {
-             dispararBuzzer();
-          }
-          xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
-            dados.entrouDisparo = true;
-            dados.inicioDisparo = millis();
-          xSemaphoreGive(mutexTemporizador);
-          pularBuzzerPadrao = true;
-          agora = 0;
-          xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
-            dados.temporizadorLigado = false;
-          xSemaphoreGive(mutexTemporizador);
-      } else {
-          if (!buzzerMutado) {
-             dispararBuzzer();
-          }
+        if (!buzzerMutado)
+        {
+          dispararBuzzer();
+        }
+        xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
+        condicoes.entrouDisparo = true;
+        condicoes.inicioDisparo = millis();
+        xSemaphoreGive(mutexTemporizador);
+        pularBuzzerPadrao = true;
+        agora = 0;
+        xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
+        condicoes.temporizadorLigado = false;
+        xSemaphoreGive(mutexTemporizador);
+      }
+      else
+      {
+        if (!buzzerMutado)
+        {
+          dispararBuzzer();
+        }
         pularBuzzerPadrao = true;
       }
-
     }
 
-    if (entrouDisparo) {
+    if (entrouDisparo)
+    {
 
-        if ((millis() - inicioDisparo)/1000 >= 60) {
-          desligarBuzzer();
-          xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
-            dados.entrouDisparo = false;
-          xSemaphoreGive(mutexTemporizador);
-          pularBuzzerPadrao = true;
-          inicioDisparo = 0;
-        } else {
-          pularBuzzerPadrao = false;
-        }
+      if ((millis() - inicioDisparo) / 1000 >= 60)
+      {
+        desligarBuzzer();
+        xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
+        condicoes.entrouDisparo = false;
+        xSemaphoreGive(mutexTemporizador);
+        pularBuzzerPadrao = true;
+        inicioDisparo = 0;
       }
-    
+      else
+      {
+        pularBuzzerPadrao = false;
+      }
+    }
+
     alertas();
-    if (!pularBuzzerPadrao) {
+    if (!pularBuzzerPadrao)
+    {
       atualizarBuzzer(estadoSistemaAtual);
     }
     atualizarLEDs(estadoSistemaAtual);

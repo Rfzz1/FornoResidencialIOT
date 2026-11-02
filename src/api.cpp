@@ -22,23 +22,22 @@
 String tokenJWT = "";
 String sessaoId = "";
 
-String getSessaoId() {
+String getSessaoId()
+{
     return sessaoId;
 }
 
-void setSessaoId(String SessaoId) {
+void setSessaoId(String SessaoId)
+{
     sessaoId = SessaoId;
 }
 
 double temperaturaAtual = 0;
 double temperaturaUltima = 0;
 
-// controle de recuperação de sessão
-static bool tentandoRecuperarSessao = false;
-static int tentativasSessao = 0;
-
-//Task para enviar telemetria periodicamente
-void taskNuvem(void *parameter) {
+// Task para enviar telemetria periodicamente
+void taskNuvem(void *parameter)
+{
 
     double temperaturaAtualQueue;
 
@@ -49,7 +48,7 @@ void taskNuvem(void *parameter) {
     String estadoFornoTexto = "";
 
     uint32_t tempoLigadoMin = 0;
-    static estadoForno estadoFornoAnterior = dados.estadoFornoAnterior;
+    static estadoForno estadoFornoAnterior = condicoes.estadoFornoAnterior;
 
     static estadoForno estadoFornoAnterior = condicoes.estadoFornoAnterior;
 
@@ -78,7 +77,8 @@ void taskNuvem(void *parameter) {
 
         enviarTemperatura(estadoFornoTexto, temperaturaAtualQueue, temperaturaUltimaQueue);
 
-        while (xQueueReceive(eventosQueue, &evento, 0) == pdTRUE) {
+        while (xQueueReceive(eventosQueue, &evento, 0) == pdTRUE)
+        {
 
             if (evento != NENHUM)
             {
@@ -86,14 +86,17 @@ void taskNuvem(void *parameter) {
                 enviarEvento(obterEventoSistemaTexto(evento));
             }
         }
-      
-        while (xQueueReceive(eventosFornoQueue, &eventoForno, 0) == pdTRUE) {
 
-            if (estadoFornoAnterior == FORNO_DESLIGADO && eventoForno != FORNO_DESLIGADO) {
+        while (xQueueReceive(eventosFornoQueue, &eventoForno, 0) == pdTRUE)
+        {
+
+            if (estadoFornoAnterior == FORNO_DESLIGADO && eventoForno != FORNO_DESLIGADO)
+            {
                 iniciarSessao();
             }
 
-            if (eventoForno == FORNO_DESLIGADO && estadoFornoAnterior == FORNO_ESFRIANDO) {
+            if (eventoForno == FORNO_DESLIGADO && estadoFornoAnterior == FORNO_ESFRIANDO)
+            {
                 Serial.println("Encerrar Sessão - HTTP");
                 encerrarSessao();
             }
@@ -161,7 +164,7 @@ void diagnosticoCompleto()
     }
 
     delay(1000);
- 
+
     // ---------- TESTE 4: site externo conhecido (controle - testa se HTTPS funciona em geral) ----------
     Serial.println("\n[TESTE 4] HTTPS para site externo (google.com) - teste de controle...");
     {
@@ -181,7 +184,8 @@ void diagnosticoCompleto()
 // INICIAR HTTP
 // ==========================
 
-static bool iniciarHttp(HTTPClient &http, WiFiClientSecure &client, const String &url) {
+static bool iniciarHttp(HTTPClient &http, WiFiClientSecure &client, const String &url)
+{
 
     client.setInsecure();
 
@@ -195,12 +199,15 @@ static bool iniciarHttp(HTTPClient &http, WiFiClientSecure &client, const String
 // AGUARDAR HORÁRIO
 // ==========================
 
-static bool aguardarHora(unsigned long timeoutMs) {
+static bool aguardarHora(unsigned long timeoutMs)
+{
 
     unsigned long inicio = millis();
 
-    while (time(nullptr) < 1700000000) {
-        if (millis() - inicio >= timeoutMs) {
+    while (time(nullptr) < 1700000000)
+    {
+        if (millis() - inicio >= timeoutMs)
+        {
             Serial.println("Relogio nao sincronizou a tempo.");
             return false;
         }
@@ -219,7 +226,8 @@ void fazerLogin()
     HTTPClient http;
     WiFiClientSecure client;
 
-    if (!iniciarHttp(http, client, String(API_BASE_URL) + "/v1/fornos/auth")) {
+    if (!iniciarHttp(http, client, String(API_BASE_URL) + "/v1/fornos/auth"))
+    {
         Serial.println("Falha ao iniciar conexao HTTPS.");
         return;
     }
@@ -251,11 +259,10 @@ void fazerLogin()
         deserializeJson(res, payload);
 
         xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
-            tokenJWT = res["token"].as<String>();
-            dados.tokenUsuario = tokenJWT;
-            dados.fezLogin = true;
+        tokenJWT = res["token"].as<String>();
+        condicoes.tokenUsuario = tokenJWT;
+        condicoes.fezLogin = true;
         xSemaphoreGive(mutexLoginWebSocket);
-
 
         Serial.println("Login com sucesso!");
     }
@@ -302,161 +309,117 @@ int enviarRequisicaoHTTP(
     const String &url,
     const String &metodo,
     const String &payload,
-    String *response = nullptr,
-    int tentativa = 0)
+    String *response = nullptr)
 {
 
-    xSemaphoreTake(mutexHttps, portMAX_DELAY);
+    // controle de recuperação de sessão
+    int tentativas = 0;
+    const int MAX_TENTATIVAS = 3;
+    bool sucesso = false;
+    int codigo = -2;
 
-    WiFiClientSecure secureClient;
-    HTTPClient http;
-
-    Serial.print("URL: ");
-    Serial.println(url);
-
-    if(!iniciarHttp(http, secureClient, url)) {
-        xSemaphoreGive(mutexHttps);
-        return -3; //Erro de conexão
-    }
-
-    Serial.println("BEGIN OK");
-
-    Serial.print("Token tamanho: ");
-    Serial.println(tokenJWT.length());
-
-    Serial.println("3");
-
-    bool ok = garantirLogin();
-
-    Serial.print("garantirLogin = ");
-    Serial.println(ok);
-
-    if (!ok)
-    {
-        Serial.println("SAIU -1");
-        http.end();
-        xSemaphoreGive(mutexHttps);
-        return -1;
-    }
-
-    Serial.println("ADD HEADER");
-
-    http.addHeader("Content-Type", "application/json");
-    http.addHeader("Authorization", "Bearer " + tokenJWT);
-
-    int codigo;
-
-    Serial.println("4");
-
-    Serial.print("Payload: ");
-    Serial.println(payload);
-
-    Serial.print("Metodo: ");
-    Serial.println(metodo);
-
-    Serial.printf("Memoria Heap - Livre: %d | Maior bloco: %d\n", ESP.getFreeHeap(), ESP.getMaxAllocHeap());
-    
-    if (metodo == "POST") codigo = http.POST(payload);
-    else if (metodo == "PUT") codigo = http.PUT(payload);
-    else if (metodo == "GET") codigo = http.GET();
-    else {
-        http.end();
-        xSemaphoreGive(mutexHttps);
-        return -2;
-    }
-
-    Serial.printf("HTTP retornou: %d\n", codigo);
-
-    String respostaHttp;
-
-    Serial.println("5");
-
-    if (codigo > 0)
-    {
-
-        Serial.println("6");
-
-        respostaHttp = http.getString();
-        Serial.println("Resposta da API:");
-        Serial.println(respostaHttp);
-
-        Serial.println("7");
-    }
-    else
-    {
-        Serial.println("8");
-        Serial.println(http.errorToString(codigo));
-    }
-
-    if (response != nullptr)
-    {
-        *response = respostaHttp;
-    }
-    http.end();
-    xSemaphoreGive(mutexHttps);
-    Serial.println("9");
-
-    // =========================
-    // TOKEN INVÁLIDO
-    // =========================
-
-    if (codigo == 401)
-    {
-
-        if (tentativa >= 3)
-        {
-            Serial.println("Falha crítica no login.");
-            return codigo;
-        }
-
-        xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
-            tokenJWT = "";
-            dados.tokenUsuario = "";
-            dados.fezLogin = false;
-        xSemaphoreGive(mutexLoginWebSocket);
-
-        if (!garantirLogin())
-            return codigo;
-
-        return enviarRequisicaoHTTP(url, metodo, payload, response, tentativa + 1);
-    }
-
-    // =========================
-    // SESSÃO INVÁLIDA
-    // =========================
-
-    if (codigo == 404)
-    {
-
-        if (tentativasSessao >= 3)
-        {
-            Serial.println("Falha crítica na sessão.");
-            return codigo;
-        }
-
-        if (!tentandoRecuperarSessao)
+    while (tentativas < MAX_TENTATIVAS && !sucesso) 
         {
 
-            tentandoRecuperarSessao = true;
-            tentativasSessao++;
+            xSemaphoreTake(mutexHttps, portMAX_DELAY);
 
-            Serial.println("Recriando sessão...");
+            WiFiClientSecure secureClient;
+            HTTPClient http;
 
-            sessaoId = "";
+            Serial.print("URL: ");
+            Serial.println(url);
 
-            if (iniciarSessao())
+            if (!iniciarHttp(http, secureClient, url))
             {
-                tentativasSessao = 0;
-                tentandoRecuperarSessao = false;
-                return enviarRequisicaoHTTP(url, metodo, payload, response);
+                xSemaphoreGive(mutexHttps);
+                return -3; // Erro de conexão
             }
 
-            tentandoRecuperarSessao = false;
+            if (!garantirLogin())
+            {
+                http.end();
+                xSemaphoreGive(mutexHttps);
+                return -1;
+            }
+
+            http.addHeader("Content-Type", "application/json");
+            http.addHeader("Authorization", "Bearer " + tokenJWT);
+
+            Serial.print("Payload: ");
+            Serial.println(payload);
+
+            Serial.print("Metodo: ");
+            Serial.println(metodo);
+
+            if (metodo == "POST")
+                codigo = http.POST(payload);
+            else if (metodo == "PUT")
+                codigo = http.PUT(payload);
+            else if (metodo == "GET")
+                codigo = http.GET();
+            else
+            {
+                http.end();
+                xSemaphoreGive(mutexHttps);
+                return -2;
+            }
+
+            Serial.printf("HTTP retornou: %d\n", codigo);
+
+            if (codigo >= 200 && codigo < 300) //Sucesso
+            {
+                if (response != nullptr)
+                {
+                    *response = http.getString();
+                }
+                sucesso = true;
+            }
+            else if(codigo == 401)
+            {
+                
+                // =========================
+                // TOKEN INVÁLIDO
+                // =========================
+
+                xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
+                tokenJWT = "";
+                condicoes.tokenUsuario = "";
+                condicoes.fezLogin = false;
+                xSemaphoreGive(mutexLoginWebSocket);
+                tentativas++;
+
+            }
+            else if (codigo == 404)
+            {
+                // =========================
+                // SESSÃO INVÁLIDA
+                // =========================
+
+                    sessaoId = "";
+
+                    if (iniciarSessao())
+                    {
+                        tentativas++;
+                    } else {
+                        break;
+                    }
+            }
+            else
+            {
+                if (response != nullptr)
+                {
+                    *response = http.getString();
+                }
+                sucesso = true;
+            }
+            http.end();
+            xSemaphoreGive(mutexHttps);
+            
         }
+
+        return codigo;
     }
 
-    return codigo;
-}
 
 // ==========================
 // SESSÃO
@@ -482,13 +445,15 @@ bool iniciarSessao()
     Serial.print("Código recebido em iniciarSessao: ");
     Serial.println(code);
 
-    if (code == 201) {
+    if (code == 201)
+    {
 
         JsonDocument doc;
 
         DeserializationError erro = deserializeJson(doc, resposta);
-      
-        if (erro) {
+
+        if (erro)
+        {
             Serial.println(erro.c_str());
             return false;
         }
@@ -713,18 +678,21 @@ void verificarEstadoDispositivo()
 
     conectarWiFi();
 
-    if (!aguardarHora(15000)) {
+    if (!aguardarHora(15000))
+    {
         Serial.println("Seguindo sem hora válida! HTTPS pode falhar.");
     }
 
-    if (preferences.getString("secret", "").isEmpty()) {
-        dados.espConfigurado = false;
+    if (preferences.getString("secret", "").isEmpty())
+    {
+        condicoes.espConfigurado = false;
 
         JsonDocument doc;
         HTTPClient http;
         WiFiClientSecure client;
-        
-        if(!iniciarHttp(http,client, String(API_BASE_URL) + "/v1/fornos/auto-provisionar")) {
+
+        if (!iniciarHttp(http, client, String(API_BASE_URL) + "/v1/fornos/auto-provisionar"))
+        {
             return;
         }
 
@@ -774,7 +742,7 @@ void verificarEstadoDispositivo()
     {
         condicoes.espConfigurado = true;
         Serial.println("Dispositivo já provisionado. Iniciando rotina normal...");
-        //diagnosticoCompleto();
+        // diagnosticoCompleto();
         solicitarDesligamentoBluetooth();
         fazerLogin();
     }

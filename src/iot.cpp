@@ -12,17 +12,20 @@ static unsigned long milisEstabilizarWiFi = 0;
 static unsigned long tentativaNTP = 0;
 unsigned long ultimoTesteWiFi = 0;
 
-void taskConectividade(void *parameter) {
+void taskConectividade(void *parameter)
+{
     conectarWiFi();
 
     // Aguarda obrigatoriamente a sincronização da hora antes de prosseguir
     Serial.println("Aguardando sincronizacao do relogio NTP...");
-    while (!dados.horaSincronizada) {
+    while (!condicoes.horaSincronizada)
+    {
         estabilizarHoraLocal();
         vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 
-    for (;;) {
+    for (;;)
+    {
         verificarWiFi();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
@@ -94,8 +97,7 @@ void configurarNTP()
         0,
         "time.google.com",
         "time.cloudflare.com",
-        "pool.ntp.org"
-    );
+        "pool.ntp.org");
 }
 
 void estabilizarHoraLocal()
@@ -108,12 +110,13 @@ void estabilizarHoraLocal()
         return;
     }
 
-    if (millis() - tentativaNTP >= 1000) {
+    if (millis() - tentativaNTP >= 1000)
+    {
         tentativaNTP = millis();
 
         if (getLocalTime(&timeinfo, 10000))
         {
-            dados.horaSincronizada = true;
+            condicoes.horaSincronizada = true;
             Serial.println("Hora local sincronizada com sucesso!");
             printLocalTime();
         }
@@ -129,22 +132,22 @@ void printLocalTime()
 {
     struct tm infoHoraLocal;
 
-
-    if (getLocalTime(&infoHoraLocal)) {
-        dados.HoraAtual = infoHoraLocal.tm_hour;
-        dados.MinutoAtual = infoHoraLocal.tm_min;
-        dados.SegundoAtual = infoHoraLocal.tm_sec;
+    if (getLocalTime(&infoHoraLocal))
+    {
+        condicoes.HoraAtual = infoHoraLocal.tm_hour;
+        condicoes.MinutoAtual = infoHoraLocal.tm_min;
+        condicoes.SegundoAtual = infoHoraLocal.tm_sec;
 
         Serial.printf(
             "Hora atual: %02d:%02d:%02d\n",
-            dados.HoraAtual,
-            dados.MinutoAtual,
-            dados.SegundoAtual
-        );
+            condicoes.HoraAtual,
+            condicoes.MinutoAtual,
+            condicoes.SegundoAtual);
     }
 }
 
-String obterHorarioFormatado() {
+String obterHorarioFormatado()
+{
     char buffer[20];
     sprintf(
         buffer,
