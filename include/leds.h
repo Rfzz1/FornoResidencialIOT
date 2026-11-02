@@ -5,6 +5,5 @@
 #include "utils.h"
 
 void atualizarLEDs(estadoSistema estadoAtual);
-void piscarLedAguardandoConfigBluetooth();
 
 #endif

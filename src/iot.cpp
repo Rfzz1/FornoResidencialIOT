@@ -28,7 +28,8 @@ void taskConectividade(void *parameter) {
     }
 }
 
-void conectarWiFi() {
+void conectarWiFi()
+{
     WiFi.begin(ssid, pass);
 
     Serial.println("Conectando...");
@@ -36,14 +37,17 @@ void conectarWiFi() {
     unsigned long inicioTentativa = millis();
     const unsigned long TIMEOUT_WIFI = 15000;
 
-    while (WiFi.status() != WL_CONNECTED) {
+    while (WiFi.status() != WL_CONNECTED)
+    {
 
-        if(millis() - inicioTentativa >= TIMEOUT_WIFI) {
+        if (millis() - inicioTentativa >= TIMEOUT_WIFI)
+        {
             Serial.println("Timeout ao conectar Wi-Fi. Operando offline.");
             return;
         }
 
-        if (millis() - milisEstabilizarWiFi >= 1000) {
+        if (millis() - milisEstabilizarWiFi >= 1000)
+        {
             milisEstabilizarWiFi = millis();
             Serial.print(".");
         }
@@ -65,7 +69,8 @@ void conectarWiFi() {
     configurarNTP();
 }
 
-void verificarWiFi() {
+void verificarWiFi()
+{
 
     if (millis() - ultimoTesteWiFi < 5000)
         return;
@@ -80,10 +85,10 @@ void verificarWiFi() {
     WiFi.disconnect();
 
     WiFi.begin(ssid, pass);
-
 }
 
-void configurarNTP() {
+void configurarNTP()
+{
     configTime(
         -10800,
         0,
@@ -93,32 +98,37 @@ void configurarNTP() {
     );
 }
 
-void estabilizarHoraLocal() {
+void estabilizarHoraLocal()
+{
 
     struct tm timeinfo;
 
-    if (dados.horaSincronizada) {
+    if (condicoes.horaSincronizada)
+    {
         return;
     }
 
     if (millis() - tentativaNTP >= 1000) {
         tentativaNTP = millis();
-    
-        if (getLocalTime(&timeinfo, 10000)) {
 
+        if (getLocalTime(&timeinfo, 10000))
+        {
             dados.horaSincronizada = true;
             Serial.println("Hora local sincronizada com sucesso!");
             printLocalTime();
-
-        } else {
+        }
+        else
+        {
 
             Serial.println("Obtendo hora local...");
         }
     }
 }
 
-void printLocalTime() {
+void printLocalTime()
+{
     struct tm infoHoraLocal;
+
 
     if (getLocalTime(&infoHoraLocal)) {
         dados.HoraAtual = infoHoraLocal.tm_hour;
@@ -139,9 +149,9 @@ String obterHorarioFormatado() {
     sprintf(
         buffer,
         "%02d:%02d:%02d",
-        dados.HoraAtual,
-        dados.MinutoAtual,
-        dados.SegundoAtual
-    );
+        condicoes.HoraAtual,
+        condicoes.MinutoAtual,
+        condicoes.SegundoAtual);
+
     return String(buffer);
 }
