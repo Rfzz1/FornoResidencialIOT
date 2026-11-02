@@ -5,11 +5,25 @@
 
 static unsigned long milisBuzzerErro = 0;
 static unsigned long milisBuzzerAlerta = 0;
+static unsigned long milisBuzzerTemporizador = 0;
 
 void desligarBuzzer()
 {
 
   digitalWrite(BUZZER, LOW);
+
+}
+
+void dispararBuzzer() {
+
+  if (millis() - milisBuzzerTemporizador >= 1200) {
+
+    milisBuzzerTemporizador = millis();
+
+    dados.buzzerTemporizadorPisca = !dados.buzzerTemporizadorPisca;
+
+    digitalWrite(BUZZER, dados.buzzerTemporizadorPisca);
+  }
 }
 
 void buzzerErroSensor()
@@ -48,20 +62,7 @@ void buzzerCritico()
 
 void atualizarBuzzer(estadoSistema estadoAtual)
 {
-
-  if (condicoes.estadoAtual != CRITICO && condicoes.estadoAtual != ALERTA && condicoes.estadoAtual != ERRO_SENSOR)
-  {
-    condicoes.buzzerMutado = false;
-  }
-
-  if (condicoes.buzzerMutado)
-  {
-    desligarBuzzer();
-    return;
-  }
-
-  switch (estadoAtual)
-  {
+  switch (estadoAtual) {
 
   case CRITICO:
 
@@ -77,9 +78,8 @@ void atualizarBuzzer(estadoSistema estadoAtual)
 
     buzzerErroSensor();
     break;
-
+      
   default:
-
     desligarBuzzer();
     break;
   }

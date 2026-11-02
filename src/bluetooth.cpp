@@ -8,6 +8,7 @@ BluetoothSerial SerialBT;
 static bool aguardandoReinicio = false;
 static unsigned long tempoInicioReinicio = 0;
 static bool bluetoothConectado = false;
+static bool deveDesligar = false;
 
 void taskBluetooth(void *parameter)
 {
@@ -15,8 +16,14 @@ void taskBluetooth(void *parameter)
     for (;;)
     {
 
-        if (bluetoothConectado == true)
-        {
+        if (deveDesligar) {
+            Serial.println("Desligando Bluetooth para liberar memória.... ");
+            SerialBT.end();
+            bluetoothConectado = false;
+            vTaskDelete(NULL);
+        }
+
+        if (bluetoothConectado == true) {
             processarBluetooth();
             verificarReiniciar();
         }
@@ -25,8 +32,25 @@ void taskBluetooth(void *parameter)
     }
 }
 
-void inicializarBluetooth()
-{
+void solicitarDesligamentoBluetooth() {
+    deveDesligar = true;
+}
+
+void salvarSecretBluetooth(String recebidoDoTerminal) {
+    String secretLimpa = "";
+    for (char c : recebidoDoTerminal) {
+        if (isAlphaNumeric(c) || c == '-') { 
+            secretLimpa += c;
+        }
+    }
+    // Salva a versão limpa nas Preferences
+    preferences.putString("secret", secretLimpa); 
+    dados.deviceSecret = secretLimpa;
+    Serial.println("Nova secret salva com sucesso!");
+}
+
+
+void inicializarBluetooth() {
     SerialBT.begin("MonitorForno2");
     bluetoothConectado = true;
     Serial.println("Bluetooth iniciado.");

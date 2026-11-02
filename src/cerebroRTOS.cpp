@@ -37,7 +37,6 @@ void taskCerebro(void *parameter)
         }
 
         estadoSistema novoEstadoLido = definirEstadoSistema(); // Para onde o novo estado vai ir (futuro imediato)
-
         estadoForno novoEstadoFornoLido = definirEstadoForno(); // Para onde o novo estado do forno vai ir (futuro imediato)
 
         //---- Eventos ----
@@ -142,10 +141,7 @@ void taskCerebro(void *parameter)
             xSemaphoreGive(mutexEstadoSistema);
         }
 
-        if (novoEstadoFornoLido != condicoes.estadoFornoAtual)
-        {
-
-            //---- Estado ----
+        if (novoEstadoFornoLido != dados.estadoFornoAtual) {
 
             xQueueSend(eventosFornoQueue, &novoEstadoFornoLido, 0);
 

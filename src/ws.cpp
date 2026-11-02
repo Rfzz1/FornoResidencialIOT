@@ -1,87 +1,125 @@
+#include <WebSocketsClient.h>
 #include "ws.h"
-#include <Websockets.h>
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include "api.h"
 #include "config.h"
+#include "buzzer.h"
 #include "telemetria.h"
 
-using namespace websockets;
-WebsocketsClient wsClient;
+  //Websocket
 
-// Variável local para controle de reconexão
-unsigned long ultimaTentativaWs = 0;
+  WebSocketsClient webSocket;
 
-void onMessageCallback(WebsocketsMessage message)
-{
-    Serial.print("[WS] Mensagem recebida: ");
-    Serial.println(message.data());
+void taskWebSocket(void *parameter) {
+  
+    webSocket.onEvent(aoReceberEventoWebSocket);
+    bool fezLogin;
+    String token;
 
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, message.data());
+    for (;;) {
 
-    if (!error)
-    {
-        const char *acao = doc["acao"];
+        if (!WiFi.isConnected()) {
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            dados.iniciadoWebSocket = false;
+            continue;
+        }
 
-        if (acao && strcmp(acao, "MUTE") == 0)
-        {
-            Serial.println("[WS] Comando MUTE recebido!");
+        if (dados.iniciadoWebSocket == false) {
 
-            // Protegendo a alteração da variável global com o Mutex
-            if (xSemaphoreTake(mutexEstadoSistema, portMAX_DELAY) == pdTRUE)
-            {
-                condicoes.buzzerMutado = true;
-                xSemaphoreGive(mutexEstadoSistema);
+            xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
+                fezLogin = dados.fezLogin;
+                token = dados.tokenUsuario;
+            xSemaphoreGive(mutexLoginWebSocket);
+
+            if (fezLogin && !webSocket.isConnected()) {
+
+                Serial.println("[WS] Tentando reconectar ao servidor WebSocket...");
+                webSocket.setExtraHeaders("Origin: https://monitoramentoforno.com.br");
+                webSocket.beginSSL("monitoramentoforno.com.br", 443, "/v1/ws/" + dados.serialNumber + "/fornos" + "?token=" + token, "");
+                webSocket.enableHeartbeat(3000, 10000, 5); // Envia heartbeat a cada 3 segundos, timeout de 10 segundos, tenta reconectar 5 vezes
+                webSocket.setReconnectInterval(5000); // Tenta reconectar a cada 5 segundos
+
+                Serial.println("WebSocket iniciado com sucesso!");
+                dados.iniciadoWebSocket = true;
+
             }
         }
-    }
-    else
-    {
-        Serial.print("[WS] Erro no JSON: ");
-        Serial.println(error.f_str());
+
+        webSocket.loop();
+        vTaskDelay(10 / portTICK_PERIOD_MS); // Pequena pausa para evitar sobrecarga da CPU
     }
 }
 
-void inicializarWebSocket()
-{
-    Serial.println("[WS] Inicializando conexão segura...");
-    wsClient.setInsecure(); // Ignora validação SSL
-    wsClient.onMessage(onMessageCallback);
-    String urlCompleta = String(WS_URL) + condicoes.serialNumber;
+void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t * texto, size_t tamanho) {
+    switch (tipoEvento) {
+        case WStype_CONNECTED:
+            Serial.println("[WS] Conectado ao servidor WebSocket.");
+            break;
+        case WStype_DISCONNECTED:
+            Serial.println("[WS] Desconectado do servidor WebSocket.");
+            dados.iniciadoWebSocket = false;
+            break;
+        case WStype_TEXT: {
+            Serial.println("[WS] Mensagem de texto recebida.");
+            Serial.printf("[WS] Texto recebido: %.*s\n", (int)tamanho, (char*)texto);
 
-    if (wsClient.connect(urlCompleta))
-    {
-        Serial.println("[WS] Conectado com sucesso!");
-    }
-    else
-    {
-        Serial.println("[WS] Falha na conexão inicial.");
-    }
-}
+            JsonDocument doc;
 
-void processarWebSocket()
+            String textoRecebido((char*)texto, tamanho);
 
-{
-    // Só tenta processar se o Wi-Fi estiver ok
-    if (WiFi.status() != WL_CONNECTED)
-        return;
+            if (textoRecebido.startsWith("{")) {
 
-    if (wsClient.available())
-    {
-        wsClient.poll();
-    }
-    else
-    {
-        // Tenta reconectar a cada 5 segundos se cair
-        if (millis() - ultimaTentativaWs > 5000)
-        {
-            ultimaTentativaWs = millis();
-            Serial.println("[WS] Tentando reconectar...");
+                DeserializationError error = deserializeJson(doc, texto, tamanho);
+                
+                if (error) {
+                    Serial.print("[WS] Erro ao desserializar JSON: ");
+                    Serial.println(error.f_str());
+                    return;
+                }
 
-            String urlCompleta = String(WS_URL) + condicoes.serialNumber;
-            wsClient.connect(urlCompleta);
+                const char* acao = doc["acao"];
+                boolean muted = doc["muted"];
+                uint32_t duracaoSegundos = doc["duracaoSegundos"];
+
+                if (acao && strcmp(acao, "MUTE") == 0 && muted) {
+
+                    Serial.println("[WS] Comando MUTE recebido!");
+
+                    xSemaphoreTake(mutexWebSocket, portMAX_DELAY);
+                        dados.buzzerMutado = true;
+                    xSemaphoreGive(mutexWebSocket);
+
+                } else if (acao && strcmp(acao, "DISPARAR") == 0 && duracaoSegundos){
+
+                    Serial.println("[WS] Comando DISPARAR recebido!");
+
+                    xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
+                        dados.temporizadorLigado = true;
+                        dados.mensagemChegou = millis();
+                        dados.duracaoSegundosTemporizador = duracaoSegundos;
+                    xSemaphoreGive(mutexTemporizador);
+
+                } else {
+                    Serial.println("[WS] Comando desconhecido ou inválido.");
+                }
+            } else {
+                Serial.println("[WS] Mensagem informativa recebida e ignorada");
+            }
+
+            break;
         }
+
+        case WStype_PONG: {
+            Serial.println("[WS] Pong recebido.");
+            break;
+
+        }
+
+        default:
+            Serial.println("[WS] Evento desconhecido recebido.");
+            Serial.printf("[WS] Evento recebido: %i\n", (int)tipoEvento);
+            break;
     }
 }
 

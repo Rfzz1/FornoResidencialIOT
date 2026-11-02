@@ -88,3 +88,17 @@ String obterEventoSistemaTexto(eventoSistema eventoSistema) {
     }
 
 }
+
+
+void configurarTempo() {
+    // Configura os servidores NTP padrão e o fuso
+    configTime(gmtOffset_sec, daylightOffset_sec, "pool.ntp.org", "time.nist.gov");
+    
+    // Aguarda alguns instantes até que a sincronização ocorra
+    Serial.print("Sincronizando hora");
+    while (time(nullptr) < 1000000000l) {
+        Serial.print(".");
+        delay(500);
+    }
+    Serial.println("\nHora sincronizada com sucesso!");
+}

@@ -2,27 +2,28 @@
 #include <WiFi.h>
 #include "config.h"
 #include "iot.h"
-#include <time.h>
 #include "telemetria.h"
+#include "utils.h"
+#include "secrets.h"
 
-char ssid[] = "A54 de Rafael";
-char pass[] = "Rafa130209@";
 static unsigned long milisAtualizarHoraLocal = 0;
 static unsigned long milisAtualizarHorarioAlarme = 0;
 static unsigned long milisEstabilizarWiFi = 0;
 static unsigned long tentativaNTP = 0;
 unsigned long ultimoTesteWiFi = 0;
 
-void taskConectividade(void *parameter)
-{
+void taskConectividade(void *parameter) {
     conectarWiFi();
 
-    for (;;)
-    {
-
-        verificarWiFi();
+    // Aguarda obrigatoriamente a sincronização da hora antes de prosseguir
+    Serial.println("Aguardando sincronizacao do relogio NTP...");
+    while (!dados.horaSincronizada) {
         estabilizarHoraLocal();
-        atualizarHorarioAlarme();
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+    }
+
+    for (;;) {
+        verificarWiFi();
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
@@ -51,7 +52,7 @@ void conectarWiFi()
             Serial.print(".");
         }
     }
-    Serial.println("\nWiFi cdronectado.");
+    Serial.println("\nWiFi conectado.");
 
     Serial.print("Status: ");
     Serial.println(WiFi.status());
@@ -66,7 +67,6 @@ void conectarWiFi()
     Serial.println(WiFi.dnsIP());
 
     configurarNTP();
-    printLocalTime();
 }
 
 void verificarWiFi()
@@ -94,7 +94,8 @@ void configurarNTP()
         0,
         "time.google.com",
         "time.cloudflare.com",
-        "pool.ntp.org");
+        "pool.ntp.org"
+    );
 }
 
 void estabilizarHoraLocal()
@@ -107,15 +108,14 @@ void estabilizarHoraLocal()
         return;
     }
 
-    if (millis() - tentativaNTP >= 1000)
-    {
+    if (millis() - tentativaNTP >= 1000) {
         tentativaNTP = millis();
 
         if (getLocalTime(&timeinfo, 10000))
         {
-
-            condicoes.horaSincronizada = true;
-            Serial.println("Hora local sincronizada.");
+            dados.horaSincronizada = true;
+            Serial.println("Hora local sincronizada com sucesso!");
+            printLocalTime();
         }
         else
         {
@@ -123,39 +123,29 @@ void estabilizarHoraLocal()
             Serial.println("Obtendo hora local...");
         }
     }
-    if (millis() - condicoes.inicioTentativa >= 10000 && !condicoes.horaSincronizada && !condicoes.timeoutNTP)
-    {
-
-        condicoes.timeoutNTP = true;
-        Serial.println("Falha ao sincronizar NTP.");
-    }
 }
 
 void printLocalTime()
 {
     struct tm infoHoraLocal;
 
-    if (getLocalTime(&infoHoraLocal) && millis() - milisAtualizarHoraLocal >= 1000)
-    {
-        milisAtualizarHoraLocal = millis();
 
-        condicoes.HoraAtual = infoHoraLocal.tm_hour;
-        condicoes.MinutoAtual = infoHoraLocal.tm_min;
-        condicoes.SegundoAtual = infoHoraLocal.tm_sec;
+    if (getLocalTime(&infoHoraLocal)) {
+        dados.HoraAtual = infoHoraLocal.tm_hour;
+        dados.MinutoAtual = infoHoraLocal.tm_min;
+        dados.SegundoAtual = infoHoraLocal.tm_sec;
 
         Serial.printf(
-            "%02d:%02d:%02d\n",
-            condicoes.HoraAtual,
-            condicoes.MinutoAtual,
-            condicoes.SegundoAtual);
+            "Hora atual: %02d:%02d:%02d\n",
+            dados.HoraAtual,
+            dados.MinutoAtual,
+            dados.SegundoAtual
+        );
     }
 }
 
-String obterHorarioFormatado()
-{
-
+String obterHorarioFormatado() {
     char buffer[20];
-
     sprintf(
         buffer,
         "%02d:%02d:%02d",
@@ -164,25 +154,4 @@ String obterHorarioFormatado()
         condicoes.SegundoAtual);
 
     return String(buffer);
-}
-
-void verificarHorarioAlarme()
-{
-    if (condicoes.HoraAtual == condicoes.HoraFim && condicoes.MinutoAtual == condicoes.MinutoFim)
-    {
-        condicoes.buzzerAtivaHorario = true;
-    }
-    else
-    {
-        condicoes.buzzerAtivaHorario = false;
-    }
-}
-
-void atualizarHorarioAlarme()
-{
-    if (millis() - milisAtualizarHorarioAlarme >= 1000)
-    {
-        milisAtualizarHorarioAlarme = millis();
-        verificarHorarioAlarme();
-    }
 }

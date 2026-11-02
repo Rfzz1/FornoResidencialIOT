@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "config.h"
+#include "utils.h"
 #include "sessao.h"
 #include "telemetria.h"
 #include "api.h"
@@ -26,23 +27,18 @@ void taskSessao(void *parameter)
   }
 }
 
-void tratarInicioSessao(estadoForno estadoFornoAtual, estadoForno estadoFornoAnterior)
-{
-
-  if (estadoFornoAtual != FORNO_DESLIGADO && estadoFornoAnterior == FORNO_DESLIGADO)
-  {
-
+void tratarInicioSessao(estadoForno estadoFornoAtual, estadoForno estadoFornoAnterior) {
+  if (estadoFornoAtual != FORNO_DESLIGADO &&
+      estadoFornoAnterior == FORNO_DESLIGADO) {
+    
     milisInicioSessao = millis();
     Serial.println("Sessao iniciada!");
   }
 }
 
-void tratarFimSessao(estadoForno estadoFornoAtual, estadoForno estadoFornoAnterior)
-{
-
-  if (estadoFornoAnterior != FORNO_DESLIGADO && estadoFornoAtual == FORNO_DESLIGADO)
-  {
-
+void tratarFimSessao(estadoForno estadoFornoAtual, estadoForno estadoFornoAnterior) {
+  if (estadoFornoAnterior != FORNO_DESLIGADO &&
+      estadoFornoAtual == FORNO_DESLIGADO) {
     Serial.println("Sessao encerrada!");
     Serial.print("Tempo total ligado: ");
     Serial.print(condicoes.tempoLigadoSegundos);
@@ -52,10 +48,7 @@ void tratarFimSessao(estadoForno estadoFornoAtual, estadoForno estadoFornoAnteri
   }
 }
 
-void tratarTempoSessao()
-{
-
-  // 3. Se o forno estiver desligado, não precisamos contar o tempo.
+void tratarTempoSessao() {
 
   // Agora sim podemos usar o return com segurança, DEPOIS de verificar se ele acabou de desligar.
 

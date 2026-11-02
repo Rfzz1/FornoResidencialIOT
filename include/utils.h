@@ -14,8 +14,10 @@ enum eventoSistema {
         ERRO_SENSOR_SAIDA
     };
 
+void configurarTempo();
 String obterEstadoSistemaTexto(estadoSistema estado);
 String obterEstadoFornoTexto(estadoForno estado);
 String obterEventoSistemaTexto(eventoSistema eventoSistema);
+
 
 #endif

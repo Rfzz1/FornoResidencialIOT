@@ -30,7 +30,8 @@ extern MAX6675 TERMOPAR;
 // =====================================================
 // CONSTANTES
 // =====================================================
-constexpr const char *API_BASE_URL = "http://monitoramentoforno.com.br";
+
+constexpr const char* API_BASE_URL = "https://monitoramentoforno.com.br";
 
 // protocolo "wss://" (WebSocket Seguro)
 constexpr const char *WS_URL = "wss://www.monitoramentoforno.com.br/ws/forno?serialNumber=";
@@ -49,16 +50,19 @@ const float MARGEM_ESTABILIDADE = 2.0;
 constexpr long gmtOffset_sec = -10800; // CARLOS BARBOSA - GMT-3
 constexpr int daylightOffset_sec = 0;
 
-// FreeRTOS
-// Sensores
+//FreeRTOS
 
 extern QueueHandle_t temperaturaQueue;
 extern QueueHandle_t eventosQueue;
 extern QueueHandle_t eventosFornoQueue;
+
 extern SemaphoreHandle_t mutexEstadoForno;
 extern SemaphoreHandle_t mutexEstadoSistema;
 extern SemaphoreHandle_t mutexTelemetria;
 extern SemaphoreHandle_t mutexWebSocket;
+extern SemaphoreHandle_t mutexTemporizador;
+extern SemaphoreHandle_t mutexLoginWebSocket;
+extern SemaphoreHandle_t mutexHttps;
 
 // Preferences
 
