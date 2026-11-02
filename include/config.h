@@ -64,6 +64,7 @@ extern SemaphoreHandle_t mutexWebSocket;
 extern SemaphoreHandle_t mutexTemporizador;
 extern SemaphoreHandle_t mutexLoginWebSocket;
 extern SemaphoreHandle_t mutexHttps;
+extern SemaphoreHandle_t mutexSessao;
 
 // Preferences
 

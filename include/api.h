@@ -32,4 +32,7 @@ void taskNuvem(void *parameter);
 String getSessaoId();
 void setSessaoId(String SessaoId);
 
+String getTokenJWT();
+void setTokenJWT(String TokenJWT);
+
 #endif

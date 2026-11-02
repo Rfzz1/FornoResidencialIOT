@@ -25,6 +25,7 @@
   SemaphoreHandle_t mutexTemporizador;
   SemaphoreHandle_t mutexLoginWebSocket;
   SemaphoreHandle_t mutexHttps;
+  SemaphoreHandle_t mutexSessao;
 
   //Preferences
 
@@ -55,6 +56,7 @@
     mutexWebSocket = xSemaphoreCreateMutex();
     mutexTemporizador = xSemaphoreCreateMutex();
     mutexHttps = xSemaphoreCreateMutex();
+    mutexSessao = xSemaphoreCreateMutex();
 
     //Definição de Pinos
 

@@ -24,12 +24,30 @@ String sessaoId = "";
 
 String getSessaoId()
 {
+    xSemaphoreTake(mutexSessao, portMAX_DELAY);
     return sessaoId;
+    xSemaphoreGive(mutexSessao);
 }
 
 void setSessaoId(String SessaoId)
 {
+    xSemaphoreTake(mutexSessao, portMAX_DELAY);
     sessaoId = SessaoId;
+    xSemaphoreGive(mutexSessao);
+}
+
+String getTokenJWT()
+{
+    xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
+    return tokenJWT;
+    xSemaphoreGive(mutexLoginWebSocket);
+}
+
+void setTokenJWT(String TokenJWT)
+{
+    xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
+    tokenJWT = TokenJWT;
+    xSemaphoreGive(mutexLoginWebSocket);
 }
 
 double temperaturaAtual = 0;
@@ -56,6 +74,7 @@ void taskNuvem(void *parameter)
 
     for (;;)
     {
+        tratarTempoSessao();
 
         xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
 
@@ -108,77 +127,77 @@ void taskNuvem(void *parameter)
 
 #ifdef MODO_DEBUG
 
-    void diagnosticoCompleto()
+void diagnosticoCompleto()
+{
+
+    Serial.printf("Heap livre: %d bytes\n", ESP.getFreeHeap());
+
+    Serial.println("\n===== INICIANDO DIAGNOSTICO =====");
+
+    // ---------- TESTE 1: DNS ----------
+    Serial.println("\n[TESTE 1] Resolvendo DNS...");
+    IPAddress resolvedIP;
+    if (WiFi.hostByName("monitoramentoforno.com.br", resolvedIP))
     {
-
-        Serial.printf("Heap livre: %d bytes\n", ESP.getFreeHeap());
-
-        Serial.println("\n===== INICIANDO DIAGNOSTICO =====");
-
-        // ---------- TESTE 1: DNS ----------
-        Serial.println("\n[TESTE 1] Resolvendo DNS...");
-        IPAddress resolvedIP;
-        if (WiFi.hostByName("monitoramentoforno.com.br", resolvedIP))
-        {
-            Serial.print("OK - IP resolvido: ");
-            Serial.println(resolvedIP);
-        }
-        else
-        {
-            Serial.println("FALHA - DNS nao resolveu o dominio");
-        }
-
-        // ---------- TESTE 2: HTTP puro (porta 80) ----------
-        Serial.println("\n[TESTE 2] HTTP puro na porta 80...");
-        {
-            HTTPClient http;
-            WiFiClient client;
-            http.begin(client, "http://monitoramentoforno.com.br/v1/fornos/auth");
-            http.addHeader("Content-Type", "application/json");
-            int code = http.POST("{}");
-            Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
-            if (code > 0)
-            {
-                Serial.println("Resposta do servidor: " + http.getString());
-            }
-            http.end();
-        }
-
-        delay(1000);
-
-        // ---------- TESTE 3: HTTPS com setInsecure (porta 443) ----------
-        Serial.println("\n[TESTE 3] HTTPS com setInsecure() na porta 443...");
-        {
-            HTTPClient http;
-            WiFiClientSecure client;
-            client.setInsecure();
-            http.begin(client, "https://monitoramentoforno.com.br/v1/fornos/auth");
-            http.addHeader("Content-Type", "application/json");
-            int code = http.POST("{}");
-            Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
-            if (code > 0)
-            {
-                Serial.println("Resposta do servidor: " + http.getString());
-            }
-            http.end();
-        }
-
-        delay(1000);
-
-        // ---------- TESTE 4: site externo conhecido (controle - testa se HTTPS funciona em geral) ----------
-        Serial.println("\n[TESTE 4] HTTPS para site externo (google.com) - teste de controle...");
-        {
-            HTTPClient http;
-            WiFiClientSecure client;
-            client.setInsecure();
-            http.begin(client, "https://www.google.com");
-            int code = http.GET();
-            Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
-            http.end();
-        }
-
-        Serial.println("\n===== FIM DO DIAGNOSTICO =====\n");
+        Serial.print("OK - IP resolvido: ");
+        Serial.println(resolvedIP);
     }
+    else
+    {
+        Serial.println("FALHA - DNS nao resolveu o dominio");
+    }
+
+    // ---------- TESTE 2: HTTP puro (porta 80) ----------
+    Serial.println("\n[TESTE 2] HTTP puro na porta 80...");
+    {
+        HTTPClient http;
+        WiFiClient client;
+        http.begin(client, "http://monitoramentoforno.com.br/v1/fornos/auth");
+        http.addHeader("Content-Type", "application/json");
+        int code = http.POST("{}");
+        Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
+        if (code > 0)
+        {
+            Serial.println("Resposta do servidor: " + http.getString());
+        }
+        http.end();
+    }
+
+    delay(1000);
+
+    // ---------- TESTE 3: HTTPS com setInsecure (porta 443) ----------
+    Serial.println("\n[TESTE 3] HTTPS com setInsecure() na porta 443...");
+    {
+        HTTPClient http;
+        WiFiClientSecure client;
+        client.setInsecure();
+        http.begin(client, "https://monitoramentoforno.com.br/v1/fornos/auth");
+        http.addHeader("Content-Type", "application/json");
+        int code = http.POST("{}");
+        Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
+        if (code > 0)
+        {
+            Serial.println("Resposta do servidor: " + http.getString());
+        }
+        http.end();
+    }
+
+    delay(1000);
+
+    // ---------- TESTE 4: site externo conhecido (controle - testa se HTTPS funciona em geral) ----------
+    Serial.println("\n[TESTE 4] HTTPS para site externo (google.com) - teste de controle...");
+    {
+        HTTPClient http;
+        WiFiClientSecure client;
+        client.setInsecure();
+        http.begin(client, "https://www.google.com");
+        int code = http.GET();
+        Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
+        http.end();
+    }
+
+    Serial.println("\n===== FIM DO DIAGNOSTICO =====\n");
+}
 
 #endif
 
@@ -260,9 +279,12 @@ void fazerLogin()
         JsonDocument res;
         deserializeJson(res, payload);
 
+        String novoToken = res["token"].as<String>();
+
+        setTokenJWT(novoToken);
+
         xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
-        tokenJWT = res["token"].as<String>();
-        condicoes.tokenUsuario = tokenJWT;
+        condicoes.tokenUsuario = novoToken;
         condicoes.fezLogin = true;
         xSemaphoreGive(mutexLoginWebSocket);
 
@@ -284,14 +306,14 @@ bool garantirLogin()
 {
     ;
 
-    if (!tokenJWT.isEmpty())
+    if (!getTokenJWT().isEmpty())
     {
         return true;
     }
 
     fazerLogin();
 
-    return !tokenJWT.isEmpty();
+    return !getTokenJWT().isEmpty();
 }
 
 // ==========================
@@ -336,7 +358,7 @@ int enviarRequisicaoHTTP(
         }
 
         http.addHeader("Content-Type", "application/json");
-        http.addHeader("Authorization", "Bearer " + tokenJWT);
+        http.addHeader("Authorization", "Bearer " + getTokenJWT());
 
         Serial.print("Payload: ");
         Serial.println(payload);
@@ -368,18 +390,18 @@ int enviarRequisicaoHTTP(
             sucesso = true;
         }
         else if (codigo == 401)
-        {
+{
+            // Limpa o token global usando o setter protegido
+            setTokenJWT("");
 
-            // =========================
-            // TOKEN INVÁLIDO
-            // =========================
-
+            // Atualiza o estado da struct para deslogado
             xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
-            tokenJWT = "";
             condicoes.tokenUsuario = "";
             condicoes.fezLogin = false;
             xSemaphoreGive(mutexLoginWebSocket);
-            tentativas++;
+            
+            // Incrementa para recomeçar o loop e forçar um novo login
+            tentativas++; 
         }
         else if (codigo == 404)
         {
@@ -387,7 +409,7 @@ int enviarRequisicaoHTTP(
             // SESSÃO INVÁLIDA
             // =========================
 
-            sessaoId = "";
+            setSessaoId("");
 
             if (iniciarSessao())
             {
@@ -420,7 +442,7 @@ int enviarRequisicaoHTTP(
 bool iniciarSessao()
 {
 
-    if (!sessaoId.isEmpty())
+    if (!getSessaoId().isEmpty())
         return true;
 
     String resposta;
@@ -447,10 +469,10 @@ bool iniciarSessao()
             return false;
         }
 
-        sessaoId = doc["id"].as<String>();
+        setSessaoId(doc["id"].as<String>());
 
         Serial.println("Sessão criada:");
-        Serial.println(sessaoId);
+        Serial.println(getSessaoId());
 
         return true;
     }
@@ -477,16 +499,16 @@ void encerrarSessao()
     String resposta;
 
     int code = enviarRequisicaoHTTP(
-        String(API_BASE_URL) + "/v1/sessoes/" + sessaoId + "/encerrar",
+        String(API_BASE_URL) + "/v1/sessoes/" + getSessaoId() + "/encerrar",
         "PUT",
         body,
-        &resposta);
+        nullptr);
 
     Serial.printf("Encerrar sessão: %d\n", code);
     Serial.println("Resposta:");
     Serial.println(resposta);
 
-    sessaoId = "";
+    setSessaoId("");
 }
 
 // ==========================
@@ -507,10 +529,10 @@ void atualizarSessao()
     String resposta;
 
     int code = enviarRequisicaoHTTP(
-        String(API_BASE_URL) + "/v1/sessoes/" + sessaoId + "/atualizar",
+        String(API_BASE_URL) + "/v1/sessoes/" + getSessaoId() + "/atualizar",
         "PUT",
         body,
-        &resposta);
+        nullptr);
 
     Serial.printf("Atualizar sessão: %d\n", code);
     Serial.println("Resposta:");
@@ -521,51 +543,54 @@ void atualizarSessao()
 // ENVIAR TELEMETRIA
 // ==========================
 
-    void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String &estadoSistema, const String &estadoForno, int tempoLigado)
+void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String &estadoSistema, const String &estadoForno, int tempoLigado)
+{
+
+    if (getSessaoId().isEmpty())
     {
-
-        if (sessaoId.isEmpty())
+        if (estadoForno == "FORNO_DESLIGADO")
         {
-            if (estadoForno == "FORNO_DESLIGADO")
-            {
-                return;
-            }
-            // Se estiver ligado mas perdeu a sessão (ex: reiniciou), tenta recuperar
-            if (!iniciarSessao())
-            {
-                Serial.println("Nao foi possivel iniciar a sessao.");
-                return;
-            }
+            return;
         }
-
-        JsonDocument doc;
-        String body;
-
-        if(isnan(temperaturaAtual)) {
-            doc["temperaturaAtual"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
-        } else {
-            doc["temperaturaAtual"] = temperaturaAtual;
+        // Se estiver ligado mas perdeu a sessão (ex: reiniciou), tenta recuperar
+        if (!iniciarSessao())
+        {
+            Serial.println("Nao foi possivel iniciar a sessao.");
+            return;
         }
-
-        doc["temperaturaUltima"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
-        doc["estadoSistema"] = estadoSistema;
-        doc["estadoForno"] = estadoForno;
-        doc["tempoLigadoMinutos"] = tempoLigado;
-
-        serializeJson(doc, body);
-
-        String resposta;
-
-        int code = enviarRequisicaoHTTP(
-            String(API_BASE_URL) + "/v1/telemetrias",
-            "POST",
-            body,
-            &resposta);
-
-        Serial.printf("Código: %d\n", code);
-        Serial.println("Resposta:");
-        Serial.println(resposta);
     }
+
+    JsonDocument doc;
+    String body;
+
+    if (isnan(temperaturaAtual))
+    {
+        doc["temperaturaAtual"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
+    }
+    else
+    {
+        doc["temperaturaAtual"] = temperaturaAtual;
+    }
+
+    doc["temperaturaUltima"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
+    doc["estadoSistema"] = estadoSistema;
+    doc["estadoForno"] = estadoForno;
+    doc["tempoLigadoMinutos"] = tempoLigado;
+
+    serializeJson(doc, body);
+
+    String resposta;
+
+    int code = enviarRequisicaoHTTP(
+        String(API_BASE_URL) + "/v1/telemetrias",
+        "POST",
+        body,
+        &resposta);
+
+    Serial.printf("Código: %d\n", code);
+    Serial.println("Resposta:");
+    Serial.println(resposta);
+}
 
 // ==========================
 // TEMPERATURA
@@ -574,7 +599,7 @@ void atualizarSessao()
 void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, double temperaturaUltima)
 {
 
-    if (sessaoId.isEmpty())
+    if (getSessaoId().isEmpty())
     {
         if (estadoFornoTexto == "FORNO_DESLIGADO")
         {
@@ -595,7 +620,7 @@ void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, 
     String body;
 
     Serial.print("Sessao: ");
-    Serial.println(sessaoId);
+    Serial.println(getSessaoId());
 
     if (!iniciarSessao())
     {
@@ -604,9 +629,9 @@ void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, 
     }
 
     Serial.print("Sessao: ");
-    Serial.println(sessaoId);
+    Serial.println(getSessaoId());
 
-    doc["sessaoId"] = sessaoId;
+    doc["sessaoId"] = getSessaoId();
     doc["temperaturaAtual"] = temperaturaAtual;
     doc["temperaturaUltima"] = temperaturaUltima;
 
@@ -634,7 +659,7 @@ void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, 
 void enviarEvento(String tipo)
 {
 
-    if (!iniciarSessao() || sessaoId.isEmpty())
+    if (!iniciarSessao() || getSessaoId().isEmpty())
     {
         Serial.println("Falha ao enviar evento: Sessao não iniciada ou sessaoId vazio.");
         return;
@@ -644,7 +669,7 @@ void enviarEvento(String tipo)
     String body;
     body.reserve(128);
 
-    doc["sessaoId"] = sessaoId;
+    doc["sessaoId"] = getSessaoId();
     doc["tipo"] = tipo;
 
     serializeJson(doc, body);
@@ -727,9 +752,9 @@ void verificarEstadoDispositivo()
     {
         condicoes.espConfigurado = true;
         Serial.println("Dispositivo já provisionado. Iniciando rotina normal...");
-        #ifdef MODO_DEBUG
-            diagnosticoCompleto();
-        #endif
+#ifdef MODO_DEBUG
+        diagnosticoCompleto();
+#endif
         solicitarDesligamentoBluetooth();
         fazerLogin();
     }

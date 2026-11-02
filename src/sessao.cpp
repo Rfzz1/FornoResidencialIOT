@@ -18,10 +18,13 @@ void taskSessao(void *parameter)
 
     tratarInicioSessao(condicoes.estadoFornoAtual, condicoes.estadoFornoAnterior);
     tratarFimSessao(condicoes.estadoFornoAtual, condicoes.estadoFornoAnterior);
-    tratarTempoSessao();
 
-    condicoes.estadoFornoAnterior = condicoes.estadoFornoAtual;
-    condicoes.estadoFornoAtual = definirEstadoForno();
+    xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
+
+      condicoes.estadoFornoAnterior = condicoes.estadoFornoAtual;
+      condicoes.estadoFornoAtual = definirEstadoForno();
+
+    xSemaphoreGive(mutexEstadoForno);
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
@@ -44,7 +47,12 @@ void tratarFimSessao(estadoForno estadoFornoAtual, estadoForno estadoFornoAnteri
     Serial.print(condicoes.tempoLigadoSegundos);
     Serial.println(" segundos");
     tempoLigado = 0;
-    condicoes.tempoLigadoSegundos = 0;
+
+    xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
+    
+      condicoes.tempoLigadoSegundos = 0;
+
+    xSemaphoreGive(mutexTelemetria);
   }
 }
 
