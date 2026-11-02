@@ -13,6 +13,7 @@
 #define TERMOPAR_SCK 18
 
 #define BUZZER 15
+#define MODO_DEBUG
 
 #include <Arduino.h>
 #include <math.h>

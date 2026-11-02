@@ -12,9 +12,13 @@ static bool deveDesligar = false;
 
 void taskBluetooth(void *parameter)
 {
+    unsigned long desligamento = millis();
 
     for (;;)
     {
+        if (millis() - desligamento >= 120000 && bluetoothConectado) {
+            solicitarDesligamentoBluetooth(); 
+        }
 
         if (deveDesligar)
         {
@@ -58,8 +62,9 @@ void salvarSecretBluetooth(String recebidoDoTerminal)
 void inicializarBluetooth()
 {
     SerialBT.begin("MonitorForno2");
+    SerialBT.setPin("123456");
     bluetoothConectado = true;
-    Serial.println("Bluetooth iniciado.");
+    Serial.println("Bluetooth iniciado. Requer PIN para pareamento.");
 }
 
 void inicializarPreferences()
@@ -76,8 +81,7 @@ void inicializarPreferences()
     condicoes.serialNumber = preferences.getString("serialNumber", "");
     condicoes.deviceSecret = preferences.getString("secret", "");
 
-    Serial.println("Secret salva:");
-    Serial.println(condicoes.deviceSecret);
+    Serial.println("Secret salva");
 
     if (condicoes.serialNumber.isEmpty())
     {
@@ -86,7 +90,7 @@ void inicializarPreferences()
         preferences.putString("serialNumber", condicoes.serialNumber);
     }
 
-    Serial.println("Serial: " + condicoes.serialNumber);
+    Serial.println("Serial Number salvo");
 }
 
 // ==========================

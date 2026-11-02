@@ -50,8 +50,6 @@ void taskNuvem(void *parameter)
     uint32_t tempoLigadoMin = 0;
     static estadoForno estadoFornoAnterior = condicoes.estadoFornoAnterior;
 
-    static estadoForno estadoFornoAnterior = condicoes.estadoFornoAnterior;
-
     eventoSistema evento;
 
     estadoForno eventoForno;
@@ -108,77 +106,81 @@ void taskNuvem(void *parameter)
     }
 }
 
-void diagnosticoCompleto()
-{
+#ifdef MODO_DEBUG
 
-    Serial.printf("Heap livre: %d bytes\n", ESP.getFreeHeap());
-
-    Serial.println("\n===== INICIANDO DIAGNOSTICO =====");
-
-    // ---------- TESTE 1: DNS ----------
-    Serial.println("\n[TESTE 1] Resolvendo DNS...");
-    IPAddress resolvedIP;
-    if (WiFi.hostByName("monitoramentoforno.com.br", resolvedIP))
+    void diagnosticoCompleto()
     {
-        Serial.print("OK - IP resolvido: ");
-        Serial.println(resolvedIP);
-    }
-    else
-    {
-        Serial.println("FALHA - DNS nao resolveu o dominio");
-    }
 
-    // ---------- TESTE 2: HTTP puro (porta 80) ----------
-    Serial.println("\n[TESTE 2] HTTP puro na porta 80...");
-    {
-        HTTPClient http;
-        WiFiClient client;
-        http.begin(client, "http://monitoramentoforno.com.br/v1/fornos/auth");
-        http.addHeader("Content-Type", "application/json");
-        int code = http.POST("{}");
-        Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
-        if (code > 0)
+        Serial.printf("Heap livre: %d bytes\n", ESP.getFreeHeap());
+
+        Serial.println("\n===== INICIANDO DIAGNOSTICO =====");
+
+        // ---------- TESTE 1: DNS ----------
+        Serial.println("\n[TESTE 1] Resolvendo DNS...");
+        IPAddress resolvedIP;
+        if (WiFi.hostByName("monitoramentoforno.com.br", resolvedIP))
         {
-            Serial.println("Resposta do servidor: " + http.getString());
+            Serial.print("OK - IP resolvido: ");
+            Serial.println(resolvedIP);
         }
-        http.end();
-    }
-
-    delay(1000);
-
-    // ---------- TESTE 3: HTTPS com setInsecure (porta 443) ----------
-    Serial.println("\n[TESTE 3] HTTPS com setInsecure() na porta 443...");
-    {
-        HTTPClient http;
-        WiFiClientSecure client;
-        client.setInsecure();
-        http.begin(client, "https://monitoramentoforno.com.br/v1/fornos/auth");
-        http.addHeader("Content-Type", "application/json");
-        int code = http.POST("{}");
-        Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
-        if (code > 0)
+        else
         {
-            Serial.println("Resposta do servidor: " + http.getString());
+            Serial.println("FALHA - DNS nao resolveu o dominio");
         }
-        http.end();
+
+        // ---------- TESTE 2: HTTP puro (porta 80) ----------
+        Serial.println("\n[TESTE 2] HTTP puro na porta 80...");
+        {
+            HTTPClient http;
+            WiFiClient client;
+            http.begin(client, "http://monitoramentoforno.com.br/v1/fornos/auth");
+            http.addHeader("Content-Type", "application/json");
+            int code = http.POST("{}");
+            Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
+            if (code > 0)
+            {
+                Serial.println("Resposta do servidor: " + http.getString());
+            }
+            http.end();
+        }
+
+        delay(1000);
+
+        // ---------- TESTE 3: HTTPS com setInsecure (porta 443) ----------
+        Serial.println("\n[TESTE 3] HTTPS com setInsecure() na porta 443...");
+        {
+            HTTPClient http;
+            WiFiClientSecure client;
+            client.setInsecure();
+            http.begin(client, "https://monitoramentoforno.com.br/v1/fornos/auth");
+            http.addHeader("Content-Type", "application/json");
+            int code = http.POST("{}");
+            Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
+            if (code > 0)
+            {
+                Serial.println("Resposta do servidor: " + http.getString());
+            }
+            http.end();
+        }
+
+        delay(1000);
+
+        // ---------- TESTE 4: site externo conhecido (controle - testa se HTTPS funciona em geral) ----------
+        Serial.println("\n[TESTE 4] HTTPS para site externo (google.com) - teste de controle...");
+        {
+            HTTPClient http;
+            WiFiClientSecure client;
+            client.setInsecure();
+            http.begin(client, "https://www.google.com");
+            int code = http.GET();
+            Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
+            http.end();
+        }
+
+        Serial.println("\n===== FIM DO DIAGNOSTICO =====\n");
     }
 
-    delay(1000);
-
-    // ---------- TESTE 4: site externo conhecido (controle - testa se HTTPS funciona em geral) ----------
-    Serial.println("\n[TESTE 4] HTTPS para site externo (google.com) - teste de controle...");
-    {
-        HTTPClient http;
-        WiFiClientSecure client;
-        client.setInsecure();
-        http.begin(client, "https://www.google.com");
-        int code = http.GET();
-        Serial.printf("Codigo: %d | Mensagem: %s\n", code, http.errorToString(code).c_str());
-        http.end();
-    }
-
-    Serial.println("\n===== FIM DO DIAGNOSTICO =====\n");
-}
+#endif
 
 // ==========================
 // INICIAR HTTP
@@ -248,7 +250,7 @@ void fazerLogin()
 
     serializeJson(doc, jsonOutput);
 
-    Serial.println("Enviando JSON: " + jsonOutput);
+    Serial.println("Enviando JSON");
 
     int code = http.POST(jsonOutput);
 
@@ -280,23 +282,14 @@ void fazerLogin()
 
 bool garantirLogin()
 {
-
-    Serial.println("GL 1");
+    ;
 
     if (!tokenJWT.isEmpty())
     {
-        Serial.println("GL 2");
         return true;
     }
 
-    Serial.println("GL 3");
-
     fazerLogin();
-
-    Serial.println("GL 4");
-
-    Serial.print("Token tamanho: ");
-    Serial.println(tokenJWT.length());
 
     return !tokenJWT.isEmpty();
 }
@@ -318,108 +311,107 @@ int enviarRequisicaoHTTP(
     bool sucesso = false;
     int codigo = -2;
 
-    while (tentativas < MAX_TENTATIVAS && !sucesso) 
+    while (tentativas < MAX_TENTATIVAS && !sucesso)
+    {
+
+        xSemaphoreTake(mutexHttps, portMAX_DELAY);
+
+        WiFiClientSecure secureClient;
+        HTTPClient http;
+
+        Serial.print("URL: ");
+        Serial.println(url);
+
+        if (!iniciarHttp(http, secureClient, url))
         {
-
-            xSemaphoreTake(mutexHttps, portMAX_DELAY);
-
-            WiFiClientSecure secureClient;
-            HTTPClient http;
-
-            Serial.print("URL: ");
-            Serial.println(url);
-
-            if (!iniciarHttp(http, secureClient, url))
-            {
-                xSemaphoreGive(mutexHttps);
-                return -3; // Erro de conexão
-            }
-
-            if (!garantirLogin())
-            {
-                http.end();
-                xSemaphoreGive(mutexHttps);
-                return -1;
-            }
-
-            http.addHeader("Content-Type", "application/json");
-            http.addHeader("Authorization", "Bearer " + tokenJWT);
-
-            Serial.print("Payload: ");
-            Serial.println(payload);
-
-            Serial.print("Metodo: ");
-            Serial.println(metodo);
-
-            if (metodo == "POST")
-                codigo = http.POST(payload);
-            else if (metodo == "PUT")
-                codigo = http.PUT(payload);
-            else if (metodo == "GET")
-                codigo = http.GET();
-            else
-            {
-                http.end();
-                xSemaphoreGive(mutexHttps);
-                return -2;
-            }
-
-            Serial.printf("HTTP retornou: %d\n", codigo);
-
-            if (codigo >= 200 && codigo < 300) //Sucesso
-            {
-                if (response != nullptr)
-                {
-                    *response = http.getString();
-                }
-                sucesso = true;
-            }
-            else if(codigo == 401)
-            {
-                
-                // =========================
-                // TOKEN INVÁLIDO
-                // =========================
-
-                xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
-                tokenJWT = "";
-                condicoes.tokenUsuario = "";
-                condicoes.fezLogin = false;
-                xSemaphoreGive(mutexLoginWebSocket);
-                tentativas++;
-
-            }
-            else if (codigo == 404)
-            {
-                // =========================
-                // SESSÃO INVÁLIDA
-                // =========================
-
-                    sessaoId = "";
-
-                    if (iniciarSessao())
-                    {
-                        tentativas++;
-                    } else {
-                        break;
-                    }
-            }
-            else
-            {
-                if (response != nullptr)
-                {
-                    *response = http.getString();
-                }
-                sucesso = true;
-            }
-            http.end();
             xSemaphoreGive(mutexHttps);
-            
+            return -3; // Erro de conexão
         }
 
-        return codigo;
+        if (!garantirLogin())
+        {
+            http.end();
+            xSemaphoreGive(mutexHttps);
+            return -1;
+        }
+
+        http.addHeader("Content-Type", "application/json");
+        http.addHeader("Authorization", "Bearer " + tokenJWT);
+
+        Serial.print("Payload: ");
+        Serial.println(payload);
+
+        Serial.print("Metodo: ");
+        Serial.println(metodo);
+
+        if (metodo == "POST")
+            codigo = http.POST(payload);
+        else if (metodo == "PUT")
+            codigo = http.PUT(payload);
+        else if (metodo == "GET")
+            codigo = http.GET();
+        else
+        {
+            http.end();
+            xSemaphoreGive(mutexHttps);
+            return -2;
+        }
+
+        Serial.printf("HTTP retornou: %d\n", codigo);
+
+        if (codigo >= 200 && codigo < 300) // Sucesso
+        {
+            if (response != nullptr)
+            {
+                *response = http.getString();
+            }
+            sucesso = true;
+        }
+        else if (codigo == 401)
+        {
+
+            // =========================
+            // TOKEN INVÁLIDO
+            // =========================
+
+            xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
+            tokenJWT = "";
+            condicoes.tokenUsuario = "";
+            condicoes.fezLogin = false;
+            xSemaphoreGive(mutexLoginWebSocket);
+            tentativas++;
+        }
+        else if (codigo == 404)
+        {
+            // =========================
+            // SESSÃO INVÁLIDA
+            // =========================
+
+            sessaoId = "";
+
+            if (iniciarSessao())
+            {
+                tentativas++;
+            }
+            else
+            {
+                break;
+            }
+        }
+        else
+        {
+            if (response != nullptr)
+            {
+                *response = http.getString();
+            }
+            sucesso = true;
+        }
+        http.end();
+        xSemaphoreGive(mutexHttps);
     }
 
+    return codigo;
+}
 
 // ==========================
 // SESSÃO
@@ -432,9 +424,6 @@ bool iniciarSessao()
         return true;
 
     String resposta;
-
-    Serial.println("Token:");
-    Serial.println(tokenJWT);
 
     int code = enviarRequisicaoHTTP(
         String(API_BASE_URL) + "/v1/sessoes/iniciar",
@@ -615,9 +604,6 @@ void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, 
         return;
     }
 
-    Serial.print("Token: ");
-    Serial.println(tokenJWT.length());
-
     Serial.print("Sessao: ");
     Serial.println(sessaoId);
 
@@ -703,7 +689,7 @@ void verificarEstadoDispositivo()
         String jsonOutput;
         serializeJson(doc, jsonOutput);
 
-        Serial.println("Enviando JSON: " + jsonOutput);
+        Serial.println("Enviando JSON");
 
         int code = http.POST(jsonOutput);
 
@@ -742,7 +728,9 @@ void verificarEstadoDispositivo()
     {
         condicoes.espConfigurado = true;
         Serial.println("Dispositivo já provisionado. Iniciando rotina normal...");
-        // diagnosticoCompleto();
+        #ifdef MODO_DEBUG
+            diagnosticoCompleto();
+        #endif
         solicitarDesligamentoBluetooth();
         fazerLogin();
     }

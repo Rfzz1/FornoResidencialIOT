@@ -12,7 +12,10 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
 void atualizarSessao();
 
 void verificarEstadoDispositivo();
-void diagnosticoCompleto();
+
+#ifdef MODO_DEBUG
+    void diagnosticoCompleto();
+#endif
 
 bool garantirLogin();
 
