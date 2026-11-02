@@ -20,7 +20,7 @@ void taskConectividade(void *parameter) {
     while (!dados.horaSincronizada) {
         estabilizarHoraLocal();
         vTaskDelay(500 / portTICK_PERIOD_MS);
-    }\
+    }
 
     for (;;) {
         verificarWiFi();
