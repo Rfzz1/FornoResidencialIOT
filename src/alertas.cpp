@@ -13,11 +13,7 @@ void taskAlertas(void *parameter)
   estadoSistema estadoAnterior = SEGURO;
   bool buzzerMutado;
   bool temporizadorLigado;
-  bool entrouDisparo;
-  unsigned long agora = 0;
-  unsigned long mensagemChegou;
   unsigned long inicioDisparo;
-  uint32_t duracaoSegundosTemporizador;
 
   for (;;)
   {
@@ -41,9 +37,6 @@ void taskAlertas(void *parameter)
 
     xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
     temporizadorLigado = condicoes.temporizadorLigado;
-    mensagemChegou = condicoes.mensagemChegou;
-    duracaoSegundosTemporizador = condicoes.duracaoSegundosTemporizador;
-    entrouDisparo = condicoes.entrouDisparo;
     inicioDisparo = condicoes.inicioDisparo;
 
     xSemaphoreGive(mutexTemporizador);
@@ -71,50 +64,17 @@ void taskAlertas(void *parameter)
     if (temporizadorLigado)
     {
 
-      agora = millis();
-
-      if ((agora - mensagemChegou) / 1000 >= duracaoSegundosTemporizador)
+      if (!buzzerMutado && (millis() - inicioDisparo < (DURACAO_APITO_TEMPORIZADOR_SEG * 1000)))
       {
-
-        if (!buzzerMutado)
-        {
-          dispararBuzzer();
-        }
-        xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
-        condicoes.entrouDisparo = true;
-        condicoes.inicioDisparo = millis();
-        xSemaphoreGive(mutexTemporizador);
+        dispararBuzzer();
         pularBuzzerPadrao = true;
-        agora = 0;
-        xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
-        condicoes.temporizadorLigado = false;
-        xSemaphoreGive(mutexTemporizador);
       }
       else
-      {
-        if (!buzzerMutado)
-        {
-          dispararBuzzer();
-        }
-        pularBuzzerPadrao = true;
-      }
-    }
-
-    if (entrouDisparo)
-    {
-
-      if ((millis() - inicioDisparo) / 1000 >= 60)
       {
         desligarBuzzer();
         xSemaphoreTake(mutexTemporizador, portMAX_DELAY);
-        condicoes.entrouDisparo = false;
+          condicoes.temporizadorLigado = false;
         xSemaphoreGive(mutexTemporizador);
-        pularBuzzerPadrao = true;
-        inicioDisparo = 0;
-      }
-      else
-      {
-        pularBuzzerPadrao = false;
       }
     }
 

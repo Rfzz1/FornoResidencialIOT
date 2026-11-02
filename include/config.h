@@ -13,7 +13,9 @@
 #define TERMOPAR_SCK 18
 
 #define BUZZER 15
+
 #define MODO_DEBUG
+#define DURACAO_APITO_TEMPORIZADOR_SEG 15
 
 #include <Arduino.h>
 #include <math.h>

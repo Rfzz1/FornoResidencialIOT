@@ -17,7 +17,6 @@
         bool sessaoIniciada = false;
         bool fezLogin = false;
         bool temporizadorLigado = false;
-        bool entrouDisparo = false;
         bool iniciadoWebSocket = false;
 
         float TEMP_ATUAL = 0;
@@ -26,12 +25,10 @@
         uint32_t tempoLigadoHoras = 0;
         uint32_t tempoLigadoMinutos = 0;
         
-        uint32_t duracaoSegundosTemporizador = 0;
 
         unsigned long milisEstabilizarTermopar = 0;
         unsigned long tempoLigadoSegundos = 0;
         unsigned long inicioTentativa = 0;
-        unsigned long mensagemChegou = 0;
         unsigned long inicioDisparo = 0;
 
         estadoSistema estadoAtual = INICIANDO;
