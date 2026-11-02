@@ -26,7 +26,7 @@ void taskTemperatura(void *parameter)
   {
 
     double temperaturaAtual = lerTemperatura();
-    xQueueSend(temperaturaQueue, &temperaturaAtual, 0);
+    xQueueOverwrite(temperaturaQueue, &temperaturaAtual);
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }

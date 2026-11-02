@@ -47,7 +47,7 @@
     //Filas RTOS
 
     temperaturaQueue = xQueueCreate(1, sizeof(double));
-    eventosQueue = xQueueCreate(3, sizeof(eventoSistema));
+    eventosQueue = xQueueCreate(5, sizeof(eventoSistema));
     eventosFornoQueue = xQueueCreate(3, sizeof(estadoForno));
     mutexEstadoSistema = xSemaphoreCreateMutex();
     mutexEstadoForno = xSemaphoreCreateMutex();

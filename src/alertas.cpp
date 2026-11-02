@@ -132,10 +132,7 @@ void taskAlertas(void *parameter)
 void alertas()
 {
 
-  condicoes.tempoLigadoHoras = condicoes.tempoLigadoSegundos / 3600.0;
-  condicoes.tempoLigadoMinutos = (condicoes.tempoLigadoSegundos % 3600) / 60.0;
-
-  if (condicoes.tempoLigadoHoras >= 1.5 &&
+  if (condicoes.tempoLigadoMinutos >= 90 &&
       condicoes.TEMP_ATUAL >= 200)
   {
 

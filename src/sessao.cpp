@@ -61,9 +61,13 @@ void tratarTempoSessao() {
 
   tempoLigado = millis() - milisInicioSessao;
 
-  condicoes.tempoLigadoSegundos = tempoLigado / 1000;
-  condicoes.tempoLigadoMinutos = condicoes.tempoLigadoSegundos / 60;
-  condicoes.tempoLigadoHoras = condicoes.tempoLigadoMinutos / 60;
+  xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
+
+    condicoes.tempoLigadoSegundos = tempoLigado / 1000;
+    condicoes.tempoLigadoMinutos = condicoes.tempoLigadoSegundos / 60;
+    condicoes.tempoLigadoHoras = condicoes.tempoLigadoMinutos / 60;
+
+  xSemaphoreGive(mutexTelemetria);
 
   if (condicoes.tempoLigadoSegundos != ultimoSegundoExibido)
   {

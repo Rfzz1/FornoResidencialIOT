@@ -132,7 +132,7 @@ void taskCerebro(void *parameter)
                 break;
             }
 
-            xQueueSend(eventosQueue, &evento, 0);
+            xQueueSend(eventosQueue, &evento, 100 / portTICK_PERIOD_MS);
 
             xSemaphoreTake(mutexEstadoSistema, portMAX_DELAY);
 
@@ -144,7 +144,7 @@ void taskCerebro(void *parameter)
         if (novoEstadoFornoLido != condicoes.estadoFornoAtual)
         {
 
-            xQueueSend(eventosFornoQueue, &novoEstadoFornoLido, 0);
+            xQueueSend(eventosFornoQueue, &novoEstadoFornoLido, 100 / portTICK_PERIOD_MS);
 
             xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
 
