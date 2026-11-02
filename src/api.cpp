@@ -112,11 +112,16 @@ void taskNuvem(void *parameter)
                 iniciarSessao();
             }
 
-            if (eventoForno == FORNO_DESLIGADO && estadoFornoAnterior == FORNO_ESFRIANDO)
-            {
-                Serial.println("Encerrar Sessão - HTTP");
-                encerrarSessao();
-            }
+                if (eventoForno == FORNO_DESLIGADO && estadoFornoAnterior != FORNO_DESLIGADO)
+                {
+
+                    Serial.println("Enviando telemetria final antes de encerrar...");
+
+                    enviarTelemetria(temperaturaAtualQueue, temperaturaUltimaQueue, estadoSistemaTexto, "FORNO_DESLIGADO", tempoLigadoMin);
+
+                    Serial.println("Encerrar Sessão - HTTP");
+                    encerrarSessao();
+                }
 
             estadoFornoAnterior = eventoForno;
         }
@@ -550,6 +555,7 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
     {
         if (estadoForno == "FORNO_DESLIGADO")
         {
+            
             return;
         }
         // Se estiver ligado mas perdeu a sessão (ex: reiniciou), tenta recuperar
