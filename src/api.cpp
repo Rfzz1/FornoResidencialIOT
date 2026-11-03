@@ -115,16 +115,16 @@ void taskNuvem(void *parameter)
                 iniciarSessao();
             }
 
-                if (eventoForno == FORNO_DESLIGADO && estadoFornoAnterior != FORNO_DESLIGADO)
-                {
+            if (eventoForno == FORNO_DESLIGADO && estadoFornoAnterior != FORNO_DESLIGADO)
+            {
 
-                    Serial.println("Enviando telemetria final antes de encerrar...");
+                Serial.println("Enviando telemetria final antes de encerrar...");
 
-                    enviarTelemetria(temperaturaAtualQueue, temperaturaUltimaQueue, estadoSistemaTexto, "FORNO_DESLIGADO", tempoLigadoMin);
+                enviarTelemetria(temperaturaAtualQueue, temperaturaUltimaQueue, estadoSistemaTexto, "FORNO_DESLIGADO", tempoLigadoMin);
 
-                    Serial.println("Encerrar Sessão - HTTP");
-                    encerrarSessao();
-                }
+                Serial.println("Encerrar Sessão - HTTP");
+                encerrarSessao();
+            }
 
             estadoFornoAnterior = eventoForno;
         }
@@ -242,7 +242,6 @@ static void logarMemoria(const char *onde)
 
 static bool iniciarHttp(HTTPClient &http, WiFiClientSecure &client, const String &url)
 {
-<<<<<<< HEAD
 #ifdef MODO_INSEGURO
     client.setInsecure();
 #else
@@ -250,13 +249,6 @@ static bool iniciarHttp(HTTPClient &http, WiFiClientSecure &client, const String
 #endif
     http.setConnectTimeout(8000);
     http.setTimeout(8000);
-=======
-
-    // client.setCACert(ROOT_CA);
-    client.setInsecure();
-
-    http.setTimeout(5000);
->>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
     http.setReuse(false);
     return http.begin(client, url);
 }
@@ -290,7 +282,6 @@ void fazerLogin()
 {
     String novoToken = "";
 
-<<<<<<< HEAD
     { // escopo: lock é liberado só depois de client/http serem destruídos
         TlsLock lock;
         WiFiClientSecure client;
@@ -343,40 +334,10 @@ void fazerLogin()
         }
 
         http.end();
-=======
-    if (!iniciarHttp(http, client, String(API_BASE_URL) + "/v1/fornos/auth"))
-    {
-        Serial.println("Falha ao iniciar conexao HTTPS.");
-        return;
->>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
     }
 
     if (!novoToken.isEmpty())
     {
-<<<<<<< HEAD
-=======
-        secretLimpa = secretLimpa.substring(0, 36);
-    }
-    doc["secret"] = secretLimpa;
-    doc["serialNumber"] = condicoes.serialNumber;
-
-    String jsonOutput;
-
-    serializeJson(doc, jsonOutput);
-
-    Serial.println("Enviando JSON");
-
-    int code = http.POST(jsonOutput);
-
-    if (code == 200)
-    {
-        String payload = http.getString();
-        JsonDocument res;
-        deserializeJson(res, payload);
-
-        String novoToken = res["token"].as<String>();
-
->>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
         setTokenJWT(novoToken);
 
         xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
@@ -414,21 +375,14 @@ int enviarRequisicaoHTTP(
     const String &payload,
     String *response)
 {
-<<<<<<< HEAD
     if (!garantirLogin())
         return -1;
 
-=======
-
-    // controle de recuperação de sessão
-    int tentativas = 0;
->>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
     const int MAX_TENTATIVAS = 3;
     int codigo = -2;
 
     for (int tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++)
     {
-<<<<<<< HEAD
         bool refazerLogin = false;
         bool repetir = false;
 
@@ -436,66 +390,15 @@ int enviarRequisicaoHTTP(
             TlsLock lock;
             if (ESP.getMaxAllocHeap() < 45000)
                 logarMemoria("heap baixo antes do HTTPS");
-=======
-
-        xSemaphoreTake(mutexHttps, portMAX_DELAY);
-
-        WiFiClientSecure secureClient;
-        HTTPClient http;
->>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
 
             WiFiClientSecure secureClient;
             HTTPClient http;
 
-<<<<<<< HEAD
             if (!iniciarHttp(http, secureClient, url))
-=======
-        if (!iniciarHttp(http, secureClient, url))
-        {
-            xSemaphoreGive(mutexHttps);
-            return -3; // Erro de conexão
-        }
-
-        if (!garantirLogin())
-        {
-            http.end();
-            xSemaphoreGive(mutexHttps);
-            return -1;
-        }
-
-        http.addHeader("Content-Type", "application/json");
-        http.addHeader("Authorization", "Bearer " + getTokenJWT());
-
-        Serial.print("Payload: ");
-        Serial.println(payload);
-
-        Serial.print("Metodo: ");
-        Serial.println(metodo);
-
-        if (metodo == "POST")
-            codigo = http.POST(payload);
-        else if (metodo == "PUT")
-            codigo = http.PUT(payload);
-        else if (metodo == "GET")
-            codigo = http.GET();
-        else
-        {
-            http.end();
-            xSemaphoreGive(mutexHttps);
-            return -2;
-        }
-
-        Serial.printf("HTTP retornou: %d\n", codigo);
-
-        if (codigo >= 200 && codigo < 300) // Sucesso
-        {
-            if (response != nullptr)
->>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
             {
                 codigo = -3;
                 repetir = true;
             }
-<<<<<<< HEAD
             else
             {
                 http.addHeader("Content-Type", "application/json");
@@ -539,44 +442,6 @@ int enviarRequisicaoHTTP(
             return codigo;
 
         vTaskDelay(pdMS_TO_TICKS(1000 * tentativa)); // espera 1s, 2s, 3s
-=======
-            sucesso = true;
-        }
-        else if (codigo == 401)
-{
-            // Limpa o token global usando o setter protegido
-            setTokenJWT("");
-
-            // Atualiza o estado da struct para deslogado
-            xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
-            condicoes.tokenUsuario = "";
-            condicoes.fezLogin = false;
-            xSemaphoreGive(mutexLoginWebSocket);
-            
-            // Incrementa para recomeçar o loop e forçar um novo login
-            tentativas++; 
-        }
-        else if (codigo == 404)
-        {
-            // =========================
-            // SESSÃO INVÁLIDA
-            // =========================
-
-            setSessaoId("");
-
-            tentativas++;
-        }
-        else
-        {
-            if (response != nullptr)
-            {
-                *response = http.getString();
-            }
-            sucesso = true;
-        }
-        http.end();
-        xSemaphoreGive(mutexHttps);
->>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
     }
 
     return codigo;
@@ -709,13 +574,9 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
             
             return;
         }
-<<<<<<< HEAD
         
         // Tenta iniciar apenas se necessário
         Serial.println("[TELEM] sem sessao, tentando iniciar");
-=======
-        // Se estiver ligado mas perdeu a sessão (ex: reiniciou), tenta recuperar
->>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
         if (!iniciarSessao())
         {
             Serial.println("Nao foi possivel iniciar a sessao.");
@@ -726,7 +587,6 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
     JsonDocument doc;
     String body;
 
-<<<<<<< HEAD
     // CORREÇÃO (opcional mas garante envio): removido a trava de <= 0 se o sensor puder ler 0, mas mantido o isnan
     if (isnan(temperaturaAtual))
     {
@@ -734,17 +594,6 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
     }
 
     doc["temperaturaAtual"] = temperaturaAtual;
-=======
-    if (isnan(temperaturaAtual))
-    {
-        doc["temperaturaAtual"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
-    }
-    else
-    {
-        doc["temperaturaAtual"] = temperaturaAtual;
-    }
-
->>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
     doc["temperaturaUltima"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
     doc["estadoSistema"] = estadoSistema;
     doc["estadoForno"] = estadoForno;
@@ -771,14 +620,10 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
 
 void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, double temperaturaUltima)
 {
-<<<<<<< HEAD
     Serial.printf("[TEMP] chamada: forno=%s atual=%.2f sessao='%s'\n",
                   estadoFornoTexto.c_str(), temperaturaAtual, getSessaoId().c_str());
 
     if (estadoFornoTexto == "FORNO_DESLIGADO")
-=======
-    if (estadoFornoTexto == "FORNO_DESLIGADO" && getSessaoId().isEmpty())
->>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
     {
         Serial.println("[TEMP] saiu: forno desligado");
         if (!getSessaoId().isEmpty())
@@ -787,7 +632,6 @@ void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, 
         }
         return;
     }
-<<<<<<< HEAD
 
     if (isnan(temperaturaAtual))
     {
@@ -802,13 +646,6 @@ void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, 
             Serial.println("[TEMP] saiu: nao foi possivel iniciar a sessao");
             return;
         }
-=======
-    
-    if (!iniciarSessao())
-    {
-        Serial.println("Nao foi possivel iniciar a sessao.");
-        return;
->>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
     }
 
     JsonDocument doc;
