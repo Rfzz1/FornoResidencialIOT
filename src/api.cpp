@@ -9,7 +9,8 @@
 #include "iot.h"
 #include "estados.h"
 #include "sessao.h"
-#include "certs.h"
+#include "alertas.h"
+#include "sensores.h"
 #include "api.h"
 #include "utils.h"
 #include "bluetooth.h"
@@ -214,7 +215,8 @@ void diagnosticoCompleto()
 static bool iniciarHttp(HTTPClient &http, WiFiClientSecure &client, const String &url)
 {
 
-    client.setCACert(ROOT_CA);
+    // client.setCACert(ROOT_CA);
+    client.setInsecure();
 
     http.setTimeout(5000);
     http.setReuse(false);
@@ -253,11 +255,7 @@ void fazerLogin()
     HTTPClient http;
     WiFiClientSecure client;
 
-    String urlAuth = String(API_BASE_URL) + "/v1/fornos/auth";
-    Serial.print("Tentando fazer login na URL: ");
-    Serial.println(urlAuth);
-
-    if (!iniciarHttp(http, client, urlAuth))
+    if (!iniciarHttp(http, client, String(API_BASE_URL) + "/v1/fornos/auth"))
     {
         Serial.println("Falha ao iniciar conexao HTTPS.");
         return;
@@ -291,11 +289,9 @@ void fazerLogin()
 
         String novoToken = res["token"].as<String>();
 
-        // Atualiza a variável global principal que o enviarRequisicaoHTTP lê
-        setTokenJWT(novoToken); 
+        setTokenJWT(novoToken);
 
         xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
-        tokenJWT = novoToken;                // Atualiza diretamente também
         condicoes.tokenUsuario = novoToken;
         condicoes.fezLogin = true;
         xSemaphoreGive(mutexLoginWebSocket);
@@ -338,13 +334,8 @@ int enviarRequisicaoHTTP(
     const String &payload,
     String *response = nullptr)
 {
-    // Garante o login ANTES de adquirir o mutex e instanciar os clientes de rede.
-    // Isso evita abrir instâncias aninhadas de WiFiClientSecure que geram o erro -1.
-    if (!garantirLogin())
-    {
-        return -1;
-    }
 
+    // controle de recuperação de sessão
     int tentativas = 0;
     const int MAX_TENTATIVAS = 3;
     bool sucesso = false;
@@ -352,10 +343,10 @@ int enviarRequisicaoHTTP(
 
     while (tentativas < MAX_TENTATIVAS && !sucesso)
     {
+
         xSemaphoreTake(mutexHttps, portMAX_DELAY);
 
         WiFiClientSecure secureClient;
-        secureClient.setInsecure(); // Mantém temporariamente para isolar problemas de certificado
         HTTPClient http;
 
         Serial.print("URL: ");
@@ -363,9 +354,15 @@ int enviarRequisicaoHTTP(
 
         if (!iniciarHttp(http, secureClient, url))
         {
-            http.end();
             xSemaphoreGive(mutexHttps);
             return -3; // Erro de conexão
+        }
+
+        if (!garantirLogin())
+        {
+            http.end();
+            xSemaphoreGive(mutexHttps);
+            return -1;
         }
 
         http.addHeader("Content-Type", "application/json");
@@ -401,28 +398,27 @@ int enviarRequisicaoHTTP(
             sucesso = true;
         }
         else if (codigo == 401)
-        {
-            // Limpa o token global
+{
+            // Limpa o token global usando o setter protegido
             setTokenJWT("");
 
+            // Atualiza o estado da struct para deslogado
             xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
             condicoes.tokenUsuario = "";
             condicoes.fezLogin = false;
             xSemaphoreGive(mutexLoginWebSocket);
             
-            // Fecha o http e libera o mutex ANTES de refazer o login
-            http.end();
-            xSemaphoreGive(mutexHttps);
-
-            // Realiza o novo login com os sockets limpos
-            fazerLogin();
-            tentativas++;
-            continue; // Repete o loop com o novo token
+            // Incrementa para recomeçar o loop e forçar um novo login
+            tentativas++; 
         }
         else if (codigo == 404)
         {
-            Serial.println("AVISO: Recebido HTTP 404. Invalidando sessaoId atual.");
+            // =========================
+            // SESSÃO INVÁLIDA
+            // =========================
+
             setSessaoId("");
+
             tentativas++;
         }
         else
@@ -433,7 +429,6 @@ int enviarRequisicaoHTTP(
             }
             sucesso = true;
         }
-
         http.end();
         xSemaphoreGive(mutexHttps);
     }
@@ -561,14 +556,15 @@ void atualizarSessao()
 
 void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String &estadoSistema, const String &estadoForno, int tempoLigado)
 {
+
     if (getSessaoId().isEmpty())
     {
         if (estadoForno == "FORNO_DESLIGADO")
         {
+            
             return;
         }
-        
-        // Tenta iniciar apenas se necessário
+        // Se estiver ligado mas perdeu a sessão (ex: reiniciou), tenta recuperar
         if (!iniciarSessao())
         {
             Serial.println("Nao foi possivel iniciar a sessao.");
@@ -578,11 +574,6 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
 
     JsonDocument doc;
     String body;
-
-    if (isnan(temperaturaAtual) || temperaturaAtual <= 0)
-    {
-        return; // Não envia lixo para o backend se o sensor falhou
-    }
 
     if (isnan(temperaturaAtual))
     {
@@ -608,7 +599,7 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
         body,
         &resposta);
 
-    Serial.printf("Código telemetria: %d\n", code);
+    Serial.printf("Código: %d\n", code);
     Serial.println("Resposta:");
     Serial.println(resposta);
 }
@@ -619,25 +610,15 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
 
 void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, double temperaturaUltima)
 {
-    // Se o forno estiver desligado e não tem sessão, não faz nada
     if (estadoFornoTexto == "FORNO_DESLIGADO" && getSessaoId().isEmpty())
     {
         return;
     }
-
-    if (isnan(temperaturaAtual) || temperaturaAtual <= 0)
-    {
-        return; // Não envia lixo para o backend se o sensor falhou
-    }
     
-    // Se não tem sessão ativa, tenta iniciar APENAS UMA VEZ
-    if (getSessaoId().isEmpty())
+    if (!iniciarSessao())
     {
-        if (!iniciarSessao())
-        {
-            Serial.println("Nao foi possivel iniciar a sessao.");
-            return;
-        }
+        Serial.println("Nao foi possivel iniciar a sessao.");
+        return;
     }
 
     Serial.printf("Heap = %u\n", ESP.getFreeHeap());

@@ -60,7 +60,7 @@ estadoSistema definirEstadoSistema()
 
   case ERRO_SENSOR:
 
-    if (temperaturaValida(condicoes.TEMP_ATUAL))
+    if (temperaturaValida())
     {
 
       condicoes.estadoAtual = SEGURO;

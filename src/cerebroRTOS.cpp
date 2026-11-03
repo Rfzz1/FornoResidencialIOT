@@ -4,7 +4,6 @@
 #include "telemetria.h"
 #include "utils.h"
 #include "sessao.h"
-#include "buzzer.h"
 
 void taskCerebro(void *parameter)
 {
@@ -26,20 +25,11 @@ void taskCerebro(void *parameter)
 
         condicoes.ULTIMA_TEMP = condicoes.TEMP_ATUAL;
 
-        if (temperaturaValida(temperaturaAtual))
+        if (temperaturaValida())
         {
             condicoes.TEMP_ATUAL = temperaturaAtual;
             Serial.printf("Temperatura atual: %.2f °C\n", condicoes.TEMP_ATUAL);
             tentativasLeitura = 0;
-
-            if (condicoes.estadoAtual == ERRO_SENSOR) {
-                Serial.println("Sensor recuperado! Saindo do estado de erro.");
-                desligarBuzzer();
-        
-                eventoSistema eventoRecuperacao = ERRO_SENSOR_SAIDA;
-                xQueueSend(eventosQueue, &eventoRecuperacao, 0);
-                condicoes.estadoAtual = definirEstadoSistema();
-            }
         }
         else
         {
