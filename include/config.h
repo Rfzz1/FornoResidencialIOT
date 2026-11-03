@@ -15,6 +15,8 @@
 #define BUZZER 15
 
 #define MODO_DEBUG
+#define MODO_INSEGURO
+
 #define DURACAO_APITO_TEMPORIZADOR_SEG 15
 
 #include <Arduino.h>

@@ -75,7 +75,7 @@
     xTaskCreatePinnedToCore(taskCerebro, "Task Cerebro", 4096, NULL, 6, NULL, 1);
     xTaskCreatePinnedToCore(taskBluetooth, "Task Bluetooth", 3072, NULL, 1, NULL, 1);
     xTaskCreatePinnedToCore(taskNuvem, "Task API", 8024, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(taskTemperatura, "Task Leitura", 2048, NULL, 6, NULL, 0);
+    xTaskCreatePinnedToCore(taskTemperatura, "Task Leitura", 4096, NULL, 6, NULL, 0);
     xTaskCreatePinnedToCore(taskAlertas, "Task Alertas", 2048, NULL, 4, NULL, 0);
     xTaskCreatePinnedToCore(taskSessao, "Task Sessao", 6144, NULL, 5, NULL, 0);
     xTaskCreatePinnedToCore(taskWebSocket, "Task WebSocket", 8024, NULL, 1, NULL, 1);

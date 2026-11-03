@@ -97,11 +97,12 @@ void taskNuvem(void *parameter)
 
         while (xQueueReceive(eventosQueue, &evento, 0) == pdTRUE)
         {
+            if (evento == NENHUM) continue;
 
-            if (evento != NENHUM)
+            if (!enviarEvento(obterEventoSistemaTexto(evento)))
             {
-
-                enviarEvento(obterEventoSistemaTexto(evento));
+                xQueueSendToFront(eventosQueue, &evento, 0); // devolve e tenta no próximo ciclo
+                break;                                       // não adianta insistir agora
             }
         }
 
@@ -208,17 +209,46 @@ void diagnosticoCompleto()
 #endif
 
 // ==========================
+// LOCK TLS (só uma conexão TLS por vez, incluindo o handshake do WebSocket)
+// ==========================
+
+struct TlsLock
+{
+    bool ativo = false;
+    TlsLock()
+    {
+        // mutexHttps ainda é NULL durante o setup(); nesse caso não trava
+        if (mutexHttps != nullptr)
+            ativo = (xSemaphoreTake(mutexHttps, pdMS_TO_TICKS(15000)) == pdTRUE); // nunca trava para sempre
+    }
+    ~TlsLock()
+    {
+        if (ativo)
+            xSemaphoreGive(mutexHttps);
+    }
+};
+
+static void logarMemoria(const char *onde)
+{
+    // getMaxAllocHeap = MAIOR bloco contíguo (é o que o TLS precisa)
+    Serial.printf("[MEM] %s | livre=%u | maiorBloco=%u | minimoHistorico=%u\n",
+                  onde, ESP.getFreeHeap(), ESP.getMaxAllocHeap(), ESP.getMinFreeHeap());
+}
+
+// ==========================
 // INICIAR HTTP
 // ==========================
 
 static bool iniciarHttp(HTTPClient &http, WiFiClientSecure &client, const String &url)
 {
-
+#ifdef MODO_INSEGURO
+    client.setInsecure();
+#else
     client.setCACert(ROOT_CA);
-
-    http.setTimeout(5000);
+#endif
+    http.setConnectTimeout(8000);
+    http.setTimeout(8000);
     http.setReuse(false);
-
     return http.begin(client, url);
 }
 
@@ -249,65 +279,71 @@ static bool aguardarHora(unsigned long timeoutMs)
 
 void fazerLogin()
 {
-    JsonDocument doc;
-    HTTPClient http;
-    WiFiClientSecure client;
+    String novoToken = "";
 
-    String urlAuth = String(API_BASE_URL) + "/v1/fornos/auth";
-    Serial.print("Tentando fazer login na URL: ");
-    Serial.println(urlAuth);
+    { // escopo: lock é liberado só depois de client/http serem destruídos
+        TlsLock lock;
+        WiFiClientSecure client;
+        HTTPClient http;
 
-    if (!iniciarHttp(http, client, urlAuth))
-    {
-        Serial.println("Falha ao iniciar conexao HTTPS.");
-        return;
+        String urlAuth = String(API_BASE_URL) + "/v1/fornos/auth";
+        Serial.print("Tentando fazer login na URL: ");
+        Serial.println(urlAuth);
+
+        if (!iniciarHttp(http, client, urlAuth))
+        {
+            Serial.println("Falha ao iniciar conexao HTTPS.");
+            return;
+        }
+
+        http.addHeader("Content-Type", "application/json");
+
+        String secretLimpa = condicoes.deviceSecret;
+        secretLimpa.trim();
+        if (secretLimpa.length() > 36)
+        {
+            secretLimpa = secretLimpa.substring(0, 36);
+        }
+
+        JsonDocument doc;
+        doc["secret"] = secretLimpa;
+        doc["serialNumber"] = condicoes.serialNumber;
+
+        String jsonOutput;
+        serializeJson(doc, jsonOutput);
+
+        Serial.println("Enviando JSON");
+
+        int code = http.POST(jsonOutput);
+
+        if (code == 200)
+        {
+            JsonDocument res;
+            deserializeJson(res, http.getString());
+            const char *t = res["token"] | "";
+            novoToken = String(t);
+            Serial.println("Login com sucesso!");
+        }
+        else
+        {
+            char erroTls[100] = "";
+            client.lastError(erroTls, sizeof(erroTls));
+            Serial.printf("ERRO LOGIN: codigo=%d msg=%s | TLS=%s\n", code, http.errorToString(code).c_str(), erroTls);
+            logarMemoria("falha login");
+        }
+
+        http.end();
     }
 
-    http.addHeader("Content-Type", "application/json");
-
-    // Limpeza da secret (aqui está o corte dos 36 caracteres para garantir)
-    String secretLimpa = condicoes.deviceSecret;
-    secretLimpa.trim();
-    if (secretLimpa.length() > 36)
+    if (!novoToken.isEmpty())
     {
-        secretLimpa = secretLimpa.substring(0, 36);
-    }
-    doc["secret"] = secretLimpa;
-    doc["serialNumber"] = condicoes.serialNumber;
-
-    String jsonOutput;
-
-    serializeJson(doc, jsonOutput);
-
-    Serial.println("Enviando JSON");
-
-    int code = http.POST(jsonOutput);
-
-    if (code == 200)
-    {
-        String payload = http.getString();
-        JsonDocument res;
-        deserializeJson(res, payload);
-
-        String novoToken = res["token"].as<String>();
-
-        // Atualiza a variável global principal que o enviarRequisicaoHTTP lê
-        setTokenJWT(novoToken); 
+        setTokenJWT(novoToken);
 
         xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
-        tokenJWT = novoToken;                // Atualiza diretamente também
         condicoes.tokenUsuario = novoToken;
         condicoes.fezLogin = true;
         xSemaphoreGive(mutexLoginWebSocket);
-
-        Serial.println("Login com sucesso!");
     }
-    else
-    {
-        Serial.printf("DEBUG ERRO HTTP: codigo=%d mensagem=%s\n", code, http.errorToString(code).c_str());
-    }
-
-    http.end();
 }
 
 // ==========================
@@ -336,106 +372,75 @@ int enviarRequisicaoHTTP(
     const String &url,
     const String &metodo,
     const String &payload,
-    String *response = nullptr)
+    String *response)
 {
-    // Garante o login ANTES de adquirir o mutex e instanciar os clientes de rede.
-    // Isso evita abrir instâncias aninhadas de WiFiClientSecure que geram o erro -1.
     if (!garantirLogin())
-    {
         return -1;
-    }
 
-    int tentativas = 0;
     const int MAX_TENTATIVAS = 3;
-    bool sucesso = false;
     int codigo = -2;
 
-    while (tentativas < MAX_TENTATIVAS && !sucesso)
+    for (int tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++)
     {
-        xSemaphoreTake(mutexHttps, portMAX_DELAY);
+        bool refazerLogin = false;
+        bool repetir = false;
 
-        WiFiClientSecure secureClient;
-        secureClient.setInsecure(); // Mantém temporariamente para isolar problemas de certificado
-        HTTPClient http;
+        { // <-- escopo: client e http são destruídos antes do lock ser liberado
+            TlsLock lock;
+            if (ESP.getMaxAllocHeap() < 45000)
+                logarMemoria("heap baixo antes do HTTPS");
 
-        Serial.print("URL: ");
-        Serial.println(url);
+            WiFiClientSecure secureClient;
+            HTTPClient http;
 
-        if (!iniciarHttp(http, secureClient, url))
-        {
-            http.end();
-            xSemaphoreGive(mutexHttps);
-            return -3; // Erro de conexão
-        }
-
-        http.addHeader("Content-Type", "application/json");
-        http.addHeader("Authorization", "Bearer " + getTokenJWT());
-
-        Serial.print("Payload: ");
-        Serial.println(payload);
-
-        Serial.print("Metodo: ");
-        Serial.println(metodo);
-
-        if (metodo == "POST")
-            codigo = http.POST(payload);
-        else if (metodo == "PUT")
-            codigo = http.PUT(payload);
-        else if (metodo == "GET")
-            codigo = http.GET();
-        else
-        {
-            http.end();
-            xSemaphoreGive(mutexHttps);
-            return -2;
-        }
-
-        Serial.printf("HTTP retornou: %d\n", codigo);
-
-        if (codigo >= 200 && codigo < 300) // Sucesso
-        {
-            if (response != nullptr)
+            if (!iniciarHttp(http, secureClient, url))
             {
-                *response = http.getString();
+                codigo = -3;
+                repetir = true;
             }
-            sucesso = true;
-        }
-        else if (codigo == 401)
+            else
+            {
+                http.addHeader("Content-Type", "application/json");
+                http.addHeader("Authorization", "Bearer " + getTokenJWT());
+
+                if (metodo == "POST")      codigo = http.POST(payload);
+                else if (metodo == "PUT")  codigo = http.PUT(payload);
+                else if (metodo == "GET")  codigo = http.GET();
+                else                       codigo = -2;
+
+                Serial.printf("HTTP retornou: %d (tentativa %d/%d)\n", codigo, tentativa, MAX_TENTATIVAS);
+
+                if (codigo < 0)
+                {
+                    char erroTls[100];
+                    secureClient.lastError(erroTls, sizeof(erroTls));
+                    Serial.printf("[TLS] %s | %s\n", erroTls, http.errorToString(codigo).c_str());
+                    logarMemoria("falha HTTPS");
+                    repetir = (codigo != -2); // -2 = método inválido, não adianta repetir
+                }
+                else if (codigo == 401)
+                {
+                    refazerLogin = true;
+                }
+                else if (response != nullptr)
+                {
+                    *response = http.getString(); // 2xx, 404, 5xx...
+                }
+            }
+            http.end();
+        } // <-- aqui a memória TLS já foi devolvida e o lock liberado
+
+        if (refazerLogin)
         {
-            // Limpa o token global
             setTokenJWT("");
-
-            xSemaphoreTake(mutexLoginWebSocket, portMAX_DELAY);
-            condicoes.tokenUsuario = "";
-            condicoes.fezLogin = false;
-            xSemaphoreGive(mutexLoginWebSocket);
-            
-            // Fecha o http e libera o mutex ANTES de refazer o login
-            http.end();
-            xSemaphoreGive(mutexHttps);
-
-            // Realiza o novo login com os sockets limpos
             fazerLogin();
-            tentativas++;
-            continue; // Repete o loop com o novo token
-        }
-        else if (codigo == 404)
-        {
-            Serial.println("AVISO: Recebido HTTP 404. Invalidando sessaoId atual.");
-            setSessaoId("");
-            tentativas++;
-        }
-        else
-        {
-            if (response != nullptr)
-            {
-                *response = http.getString();
-            }
-            sucesso = true;
+            continue;
         }
 
-        http.end();
-        xSemaphoreGive(mutexHttps);
+        if (!repetir)
+            return codigo;
+
+        vTaskDelay(pdMS_TO_TICKS(1000 * tentativa)); // espera 1s, 2s, 3s
     }
 
     return codigo;
@@ -456,10 +461,11 @@ bool iniciarSessao()
     Serial.print("Heap livre antes de iniciar sessão: ");
     Serial.println(ESP.getFreeHeap());
 
+    // CORREÇÃO: Enviando payload JSON vazio "{}" em vez de string vazia ""
     int code = enviarRequisicaoHTTP(
         String(API_BASE_URL) + "/v1/sessoes/iniciar",
         "POST",
-        "",
+        "{}",
         &resposta);
 
     Serial.print("Código recebido em iniciarSessao: ");
@@ -498,6 +504,8 @@ bool iniciarSessao()
 
 void encerrarSessao()
 {
+    if (getSessaoId().isEmpty())
+        return;
 
     String body;
     JsonDocument doc;
@@ -516,8 +524,6 @@ void encerrarSessao()
         nullptr);
 
     Serial.printf("Encerrar sessão: %d\n", code);
-    Serial.println("Resposta:");
-    Serial.println(resposta);
 
     setSessaoId("");
 }
@@ -551,8 +557,6 @@ void atualizarSessao()
         nullptr);
 
     Serial.printf("Atualizar sessão: %d\n", code);
-    Serial.println("Resposta:");
-    Serial.println(resposta);
 }
 
 // ==========================
@@ -569,6 +573,7 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
         }
         
         // Tenta iniciar apenas se necessário
+        Serial.println("[TELEM] sem sessao, tentando iniciar");
         if (!iniciarSessao())
         {
             Serial.println("Nao foi possivel iniciar a sessao.");
@@ -579,20 +584,13 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
     JsonDocument doc;
     String body;
 
-    if (isnan(temperaturaAtual) || temperaturaAtual <= 0)
+    // CORREÇÃO (opcional mas garante envio): removido a trava de <= 0 se o sensor puder ler 0, mas mantido o isnan
+    if (isnan(temperaturaAtual))
     {
         return; // Não envia lixo para o backend se o sensor falhou
     }
 
-    if (isnan(temperaturaAtual))
-    {
-        doc["temperaturaAtual"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
-    }
-    else
-    {
-        doc["temperaturaAtual"] = temperaturaAtual;
-    }
-
+    doc["temperaturaAtual"] = temperaturaAtual;
     doc["temperaturaUltima"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
     doc["estadoSistema"] = estadoSistema;
     doc["estadoForno"] = estadoForno;
@@ -619,30 +617,33 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
 
 void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, double temperaturaUltima)
 {
-    // Se o forno estiver desligado e não tem sessão, não faz nada
-    if (estadoFornoTexto == "FORNO_DESLIGADO" && getSessaoId().isEmpty())
+    Serial.printf("[TEMP] chamada: forno=%s atual=%.2f sessao='%s'\n",
+                  estadoFornoTexto.c_str(), temperaturaAtual, getSessaoId().c_str());
+
+    if (estadoFornoTexto == "FORNO_DESLIGADO")
     {
+        Serial.println("[TEMP] saiu: forno desligado");
+        if (!getSessaoId().isEmpty())
+        {
+            setSessaoId("");
+        }
         return;
     }
 
-    if (isnan(temperaturaAtual) || temperaturaAtual <= 0)
+    if (isnan(temperaturaAtual))
     {
-        return; // Não envia lixo para o backend se o sensor falhou
+        Serial.println("[TEMP] saiu: temperatura invalida");
+        return;
     }
-    
-    // Se não tem sessão ativa, tenta iniciar APENAS UMA VEZ
+
     if (getSessaoId().isEmpty())
     {
         if (!iniciarSessao())
         {
-            Serial.println("Nao foi possivel iniciar a sessao.");
+            Serial.println("[TEMP] saiu: nao foi possivel iniciar a sessao");
             return;
         }
     }
-
-    Serial.printf("Heap = %u\n", ESP.getFreeHeap());
-    Serial.print("Sessao atual: ");
-    Serial.println(getSessaoId());
 
     JsonDocument doc;
     String body;
@@ -661,22 +662,25 @@ void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, 
         body,
         &resposta);
 
-    Serial.printf("Código envio temperatura: %d\n", code);
-    Serial.println("Resposta:");
-    Serial.println(resposta);
+    Serial.printf("[TEMP] Codigo envio temperatura: %d | resposta: %s\n", code, resposta.c_str());
+
+    if (code == 401 || code == 403 || code == 404)
+    {
+        Serial.println("[TEMP] Sessao invalida no servidor. Limpando ID local...");
+        setSessaoId("");
+    }
 }
 
 // ==========================
 // EVENTOS
 // ==========================
 
-void enviarEvento(String tipo)
+bool enviarEvento(String tipo)
 {
-
     if (!iniciarSessao() || getSessaoId().isEmpty())
     {
         Serial.println("Falha ao enviar evento: Sessao não iniciada ou sessaoId vazio.");
-        return;
+        return false; // taskNuvem devolve o evento à fila
     }
 
     JsonDocument doc;
@@ -695,6 +699,20 @@ void enviarEvento(String tipo)
         nullptr);
 
     Serial.printf("Evento HTTP Código: %d\n", code);
+
+    if (code >= 200 && code < 300)
+        return true;
+
+    if (code == 404)
+    {
+        setSessaoId(""); // sessão inválida: próxima tentativa cria outra
+        return false;
+    }
+
+    if (code < 0 || code >= 500 || code == 401)
+        return false; // falha temporária: tenta de novo
+
+    return true; // outro 4xx: reenviar não adianta, descarta
 }
 
 void verificarEstadoDispositivo()
