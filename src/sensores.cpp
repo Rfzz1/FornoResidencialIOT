@@ -71,36 +71,33 @@ float lerTemperatura()
   return temperaturaAtual;
 }
 
-bool temperaturaValida(double novaTemperatura)
+bool temperaturaValida()
 {
-  if (isnan(novaTemperatura))
+
+  if (isnan(condicoes.TEMP_ATUAL))
   {
+
     Serial.println("Erro: Falha ao ler sensor!");
     return false;
   }
 
-  if (novaTemperatura < 0)
+  if (condicoes.TEMP_ATUAL < 0)
   {
+
     Serial.println("Erro: Temperatura negativa!");
     return false;
   }
 
-  if (novaTemperatura > TEMP_MAXIMA_VALIDA)
+  if (condicoes.TEMP_ATUAL > TEMP_MAXIMA_VALIDA)
   {
+
     Serial.println("Erro: Temperatura muito alta!");
     return false;
   }
 
-  // SE o sistema estava em erro, permitimos que a primeira leitura válida passe 
-  if (condicoes.estadoAtual == ERRO_SENSOR)
+  if (fabs(condicoes.TEMP_ATUAL - condicoes.ULTIMA_TEMP) > 100)
   {
-    condicoes.ULTIMA_TEMP = novaTemperatura; // Usa o novo valor
-    return true;
-  }
 
-  // Compara a nova com a antiga guardada
-  if (fabs(novaTemperatura - condicoes.ULTIMA_TEMP) > 100)
-  {
     Serial.println("Erro: Variacao abrupta!");
     return false;
   }

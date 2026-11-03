@@ -6,7 +6,10 @@
 #include "config.h"
 #include "buzzer.h"
 #include "telemetria.h"
+<<<<<<< HEAD
 #include "certs.h"
+=======
+>>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
 
 // Websocket
 
@@ -85,6 +88,7 @@ void taskWebSocket(void *parameter)
             configurarWebSocket(token);
         }
 
+<<<<<<< HEAD
         // Sem lock: o WebSocket nunca bloqueia o envio HTTP.
         // Só evita tentar o handshake TLS quando o heap está muito baixo.
         if (webSocket.isConnected() || ESP.getMaxAllocHeap() >= HEAP_MINIMO_HANDSHAKE)
@@ -95,6 +99,21 @@ void taskWebSocket(void *parameter)
         {
             ultimoAvisoHeap = millis();
             Serial.printf("[WS] Heap baixo para handshake (maior bloco=%u). Aguardando.\n", ESP.getMaxAllocHeap());
+=======
+            if (fezLogin && !webSocket.isConnected())
+            {
+
+                Serial.println("[WS] Tentando reconectar ao servidor WebSocket...");
+                webSocket.setExtraHeaders("Origin: https://monitoramentoforno.com.br");
+                String urlWebSocket = "/v1/ws/" + condicoes.serialNumber + "/fornos?token=" + token;
+                webSocket.beginSslWithCA("monitoramentoforno.com.br", 443, urlWebSocket.c_str(), ROOT_CA);
+                webSocket.enableHeartbeat(3000, 10000, 5); // Envia heartbeat a cada 3 segundos, timeout de 10 segundos, tenta reconectar 5 vezes
+                webSocket.setReconnectInterval(5000);      // Tenta reconectar a cada 5 segundos
+
+                Serial.println("WebSocket iniciado com sucesso!");
+                condicoes.iniciadoWebSocket = true;
+            }
+>>>>>>> a1f89155ddf57c6931674e7c4a4287d62a3eec2f
         }
 
         vTaskDelay(10 / portTICK_PERIOD_MS); // Pequena pausa para evitar sobrecarga da CPU
