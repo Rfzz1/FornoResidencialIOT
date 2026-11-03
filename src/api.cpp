@@ -59,74 +59,23 @@ void taskNuvem(void *parameter)
 {
 
     double temperaturaAtualQueue;
+
     double temperaturaUltimaQueue;
 
     String estadoSistemaTexto = "";
+
     String estadoFornoTexto = "";
 
-    estadoForno estadoFornoCopia;
-
     uint32_t tempoLigadoMin = 0;
-
     static estadoForno estadoFornoAnterior = condicoes.estadoFornoAnterior;
 
-    // Controle do encerramento da sessão.
-    static bool encerramentoPendente = false;
-    static bool telemetriaFinalEnviada = false;
-    static unsigned long ultimaTentativaEncerramento = 0;
-
-    const unsigned long INTERVALO_TENTATIVA_ENCERRAMENTO = 5000;
-
     eventoSistema evento;
+
     estadoForno eventoForno;
 
     for (;;)
     {
-        // =====================================================
-        // 1. PROCESSAR MUDANÇAS DO ESTADO DO FORNO
-        // =====================================================
-
-        while (xQueueReceive(eventosFornoQueue, &eventoForno, 0) == pdTRUE)
-        {
-            // Detectou que o forno ligou.
-            if (estadoFornoAnterior == FORNO_DESLIGADO &&
-                eventoForno != FORNO_DESLIGADO)
-            {
-                if (!encerramentoPendente && getSessaoId().isEmpty())
-                {
-                    Serial.println("[SESSAO] Solicitando início.");
-                }
-            }
-
-            // Detectou que o forno desligou.
-            if (eventoForno == FORNO_DESLIGADO &&
-                estadoFornoAnterior != FORNO_DESLIGADO)
-            {
-                Serial.println("[SESSAO] Desligamento detectado.");
-
-                encerramentoPendente = true;
-                telemetriaFinalEnviada = false;
-                ultimaTentativaEncerramento = 0;
-            }
-
-            estadoFornoAnterior = eventoForno;
-        }
-
-        // =====================================================
-        // 2. ENVIAR EVENTOS DO SISTEMA
-        // =====================================================
-
-        while (xQueueReceive(eventosQueue, &evento, 0) == pdTRUE)
-        {
-            if (evento != NENHUM)
-            {
-                enviarEvento(obterEventoSistemaTexto(evento));
-            }
-        }
-
-        // =====================================================
-        // 3. CAPTURAR OS DADOS ATUAIS
-        // =====================================================;
+        tratarTempoSessao();
 
         xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
 
@@ -134,138 +83,49 @@ void taskNuvem(void *parameter)
 
         temperaturaUltimaQueue = condicoes.ULTIMA_TEMP;
 
-        tempoLigadoMin = condicoes.tempoLigadoMinutos;
-
         estadoSistemaTexto = obterEstadoSistemaTexto(condicoes.estadoAtual);
+
+        estadoFornoTexto = obterEstadoFornoTexto(condicoes.estadoFornoAtual);
+
+        tempoLigadoMin = condicoes.tempoLigadoMinutos;
 
         xSemaphoreGive(mutexTelemetria);
 
-        xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
+        enviarTelemetria(temperaturaAtualQueue, temperaturaUltimaQueue, estadoSistemaTexto, estadoFornoTexto, tempoLigadoMin);
 
-            estadoFornoCopia = condicoes.estadoFornoAtual;
+        enviarTemperatura(estadoFornoTexto, temperaturaAtualQueue, temperaturaUltimaQueue);
 
-        xSemaphoreGive(mutexEstadoForno);
-
-        estadoFornoTexto = obterEstadoFornoTexto(estadoFornoCopia);
-
-         bool fornoLigado = (estadoFornoTexto != "FORNO_DESLIGADO");
-
-        // Segurança adicional:
-        // Se o forno está desligado, mas ainda existe uma sessão aberta,
-        // garante que o encerramento seja processado.
-        if (!fornoLigado && !getSessaoId().isEmpty() && !encerramentoPendente)
+        while (xQueueReceive(eventosQueue, &evento, 0) == pdTRUE)
         {
-            encerramentoPendente = true;
-            telemetriaFinalEnviada = false;
-            ultimaTentativaEncerramento = 0;
 
-            Serial.println("[SESSAO] Encerramento pendente identificado.");
-        }
-
-        // =====================================================
-        // 4. PROCESSAR O ENCERRAMENTO PENDENTE
-        // =====================================================
-
-        if (encerramentoPendente)
-        {
-            if (getSessaoId().isEmpty())
+            if (evento != NENHUM)
             {
-                Serial.println("[SESSAO] Não existe ID para encerrar.");
 
-                encerramentoPendente = false;
-                telemetriaFinalEnviada = false;
-            }
-            else
-            {
-                // Envia a telemetria final apenas uma vez.
-                if (!telemetriaFinalEnviada)
-                {
-                    Serial.println("[SESSAO] Enviando telemetria final...");
-
-                    enviarTelemetria(
-                        temperaturaAtualQueue,
-                        temperaturaUltimaQueue,
-                        estadoSistemaTexto,
-                        "FORNO_DESLIGADO",
-                        tempoLigadoMin
-                    );
-
-                    telemetriaFinalEnviada = true;
-                }
-
-                // Tenta encerrar imediatamente ou após 5 segundos.
-                if (ultimaTentativaEncerramento == 0 ||
-                    millis() - ultimaTentativaEncerramento >= INTERVALO_TENTATIVA_ENCERRAMENTO)
-                {
-                    ultimaTentativaEncerramento = millis();
-
-                    Serial.println("[SESSAO] Tentando encerrar pela API...");
-
-                    if (encerrarSessao(estadoSistemaTexto, estadoFornoTexto))
-                    {
-                        Serial.println("[SESSAO] Encerramento concluído!");
-
-                        encerramentoPendente = false;
-                        telemetriaFinalEnviada = false;
-                        ultimaTentativaEncerramento = 0;
-                    }
-                    else
-                    {
-                        Serial.println("[SESSAO] Encerramento falhou. Nova tentativa em 5 segundos.");
-                    }
-                }
+                enviarEvento(obterEventoSistemaTexto(evento));
             }
         }
 
-        // =====================================================
-        // 5. ATUALIZAÇÕES NORMAIS ENQUANTO O FORNO ESTÁ LIGADO
-        // =====================================================
-
-        if (fornoLigado && !encerramentoPendente)
+        while (xQueueReceive(eventosFornoQueue, &eventoForno, 0) == pdTRUE)
         {
-            // Atualiza o cronômetro e a sessão.
-            // Qualquer HTTP executado aqui permanece na taskNuvem.
-            tratarTempoSessao();
 
-            xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
-
-            tempoLigadoMin = condicoes.tempoLigadoMinutos;
-
-            xSemaphoreGive(mutexTelemetria);
-
-            // Garante que exista uma sessão antes das atualizações.
-            if (getSessaoId().isEmpty())
+            if (estadoFornoAnterior == FORNO_DESLIGADO && eventoForno != FORNO_DESLIGADO)
             {
-                Serial.println("[SESSAO] Tentando recuperar ou criar sessão.");
+                iniciarSessao();
+            }
 
-                if (!iniciarSessao()) 
+                if (eventoForno == FORNO_DESLIGADO && estadoFornoAnterior != FORNO_DESLIGADO)
                 {
-                    Serial.println("[SESSAO] Não foi possível iniciar. Atualizações adiadas.");
-                    vTaskDelay(5000 / portTICK_PERIOD_MS);
-                    continue;
+
+                    Serial.println("Enviando telemetria final antes de encerrar...");
+
+                    enviarTelemetria(temperaturaAtualQueue, temperaturaUltimaQueue, estadoSistemaTexto, "FORNO_DESLIGADO", tempoLigadoMin);
+
+                    Serial.println("Encerrar Sessão - HTTP");
+                    encerrarSessao();
                 }
-            }
 
-
-            bool enviada = enviarTelemetria(
-                temperaturaAtualQueue,
-                temperaturaUltimaQueue,
-                estadoSistemaTexto,
-                estadoFornoTexto,
-                tempoLigadoMin
-            );
-
-            if (!enviada)
-            {
-                Serial.println("[SESSAO] Falha na telemetria final. Nova tentativa será feita.");
-            }
+            estadoFornoAnterior = eventoForno;
         }
-
-            enviarTemperatura(
-                    estadoFornoTexto,
-                    temperaturaAtualQueue,
-                    temperaturaUltimaQueue
-            );
 
         vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
@@ -636,43 +496,30 @@ bool iniciarSessao()
 // ENCERRAR SESSÃO
 // ==========================
 
-bool encerrarSessao(const String& estadoSistemaFinal, const String& estadoFornoFinal)
+void encerrarSessao()
 {
-
-    String idSessao = getSessaoId();
-
-    if (idSessao.isEmpty()) {
-        return true;
-    }
 
     String body;
     JsonDocument doc;
 
-    doc["estadoSistemaFinal"] = estadoSistemaFinal;
-    doc["estadoFornoFinal"] = estadoFornoFinal;
+    doc["estadoSistemaFinal"] = obterEstadoSistemaTexto(condicoes.estadoAtual);
+    doc["estadoFornoFinal"] = obterEstadoFornoTexto(condicoes.estadoFornoAtual);
 
     serializeJson(doc, body);
 
+    String resposta;
+
     int code = enviarRequisicaoHTTP(
-        String(API_BASE_URL) + "/v1/sessoes/" + idSessao + "/encerrar",
+        String(API_BASE_URL) + "/v1/sessoes/" + getSessaoId() + "/encerrar",
         "PUT",
         body,
         nullptr);
 
     Serial.printf("Encerrar sessão: %d\n", code);
+    Serial.println("Resposta:");
+    Serial.println(resposta);
 
-    if (code >= 200 && code < 300) {
-
-        Serial.println("[SESSAO] Encerramento confirmado pela API.");
-
-            setSessaoId("");
-
-        return true;
-    }
-
-    Serial.println("[SESSAO] Falha ao encerrar. ID preservado para nova tentativa.");
-
-    return false;
+    setSessaoId("");
 }
 
 // ==========================
@@ -712,50 +559,48 @@ void atualizarSessao()
 // ENVIAR TELEMETRIA
 // ==========================
 
-bool enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String &estadoSistema, const String &estadoForno, int tempoLigado)
+void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String &estadoSistema, const String &estadoForno, int tempoLigado)
 {
     if (getSessaoId().isEmpty())
     {
         if (estadoForno == "FORNO_DESLIGADO")
         {
-            return false;
+            return;
         }
         
         // Tenta iniciar apenas se necessário
         if (!iniciarSessao())
         {
             Serial.println("Nao foi possivel iniciar a sessao.");
-            return false;
-        }
-    }
-
-    double temperaturaParaEnviar = temperaturaAtual;
-
-    if (isnan(temperaturaParaEnviar) || temperaturaParaEnviar <= 0)
-    {
-        if (!isnan(temperaturaUltima) && temperaturaUltima > 0)
-        {
-            temperaturaParaEnviar = temperaturaUltima;
-        }
-        else
-        {
-            Serial.println("[TELEMETRIA] Nenhuma temperatura valida disponível.");
-            return false;
+            return;
         }
     }
 
     JsonDocument doc;
     String body;
-    String resposta;
 
-    doc["temperaturaAtual"] = temperaturaParaEnviar;
-    doc["temperaturaUltima"] = (isnan(temperaturaUltima) || temperaturaUltima <= 0) ? 0.0 : temperaturaUltima;
-    
+    if (isnan(temperaturaAtual) || temperaturaAtual <= 0)
+    {
+        return; // Não envia lixo para o backend se o sensor falhou
+    }
+
+    if (isnan(temperaturaAtual))
+    {
+        doc["temperaturaAtual"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
+    }
+    else
+    {
+        doc["temperaturaAtual"] = temperaturaAtual;
+    }
+
+    doc["temperaturaUltima"] = isnan(temperaturaUltima) ? 0.0 : temperaturaUltima;
     doc["estadoSistema"] = estadoSistema;
     doc["estadoForno"] = estadoForno;
     doc["tempoLigadoMinutos"] = tempoLigado;
 
     serializeJson(doc, body);
+
+    String resposta;
 
     int code = enviarRequisicaoHTTP(
         String(API_BASE_URL) + "/v1/telemetrias",
@@ -766,8 +611,6 @@ bool enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
     Serial.printf("Código telemetria: %d\n", code);
     Serial.println("Resposta:");
     Serial.println(resposta);
-
-    return true;
 }
 
 // ==========================

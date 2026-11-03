@@ -10,10 +10,6 @@ static unsigned long tempoLigado = 0;
 static unsigned long milisUltimaAtualizacao = 0;
 static uint32_t ultimoSegundoExibido = 0;
 
-static bool encerramentoPendente = false;
-static unsigned long ultimaTentativaEncerramento = 0;
-const unsigned long INTERVALO_TENTATIVA_ENCERRAMENTO = 5000;
-
 void taskSessao(void *parameter)
 {
 

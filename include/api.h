@@ -5,10 +5,10 @@
 
 void fazerLogin();
 bool iniciarSessao();
-bool encerrarSessao(const String& estadoSistemaFinal, const String& estadoFornoFinal);
+void encerrarSessao();
 void enviarTemperatura(const String& estadoFornoTexto, double temperaturaAtual, double temperaturaUltima);
 void enviarEvento(String tipo);
-bool enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String& estadoSistema, const String& estadoForno, int tempoLigado);
+void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String& estadoSistema, const String& estadoForno, int tempoLigado);
 void atualizarSessao();
 
 void verificarEstadoDispositivo();
