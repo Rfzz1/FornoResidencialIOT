@@ -47,6 +47,7 @@
         String serialNumber;
         String deviceSecret;
         String tokenUsuario;
+        String fornoId;
     };
 
 extern CondicoesDispositivo condicoes;

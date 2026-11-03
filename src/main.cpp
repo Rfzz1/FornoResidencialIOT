@@ -38,6 +38,10 @@
     Serial.begin(115200);
     Serial.println("FIRMWARE V2.0");
 
+    // preferences.begin("forno-app", false);
+    // preferences.clear(); // Apaga tudo o que está salvo na memória flash
+    // preferences.end();
+
     //Bluetooth e provisionamento
 
     mutexLoginWebSocket = xSemaphoreCreateMutex();

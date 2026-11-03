@@ -2,7 +2,7 @@
 #define SENSORES_H
 
 float lerTemperatura();
-bool temperaturaValida();
+bool temperaturaValida(double novaTemperatura);
 void taskTemperatura(void *parameter);
 
 #endif
