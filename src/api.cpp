@@ -59,6 +59,8 @@ double temperaturaUltima = 0;
 void taskNuvem(void *parameter)
 {
 
+    const TickType_t PERIODO = pdMS_TO_TICKS(2000);
+
     double temperaturaAtualQueue;
 
     double temperaturaUltimaQueue;
@@ -76,19 +78,21 @@ void taskNuvem(void *parameter)
 
     for (;;)
     {
+        bool veioEvento = (xQueueReceive(eventosQueue, &evento, PERIODO) == pdTRUE);
+
         tratarTempoSessao();
 
         xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
 
-        temperaturaAtualQueue = condicoes.TEMP_ATUAL;
+            temperaturaAtualQueue = condicoes.TEMP_ATUAL;
 
-        temperaturaUltimaQueue = condicoes.ULTIMA_TEMP;
+            temperaturaUltimaQueue = condicoes.ULTIMA_TEMP;
 
-        estadoSistemaTexto = obterEstadoSistemaTexto(condicoes.estadoAtual);
+            estadoSistemaTexto = obterEstadoSistemaTexto(condicoes.estadoAtual);
 
-        estadoFornoTexto = obterEstadoFornoTexto(condicoes.estadoFornoAtual);
+            estadoFornoTexto = obterEstadoFornoTexto(condicoes.estadoFornoAtual);
 
-        tempoLigadoMin = condicoes.tempoLigadoMinutos;
+            tempoLigadoMin = condicoes.tempoLigadoMinutos;
 
         xSemaphoreGive(mutexTelemetria);
 
@@ -96,15 +100,12 @@ void taskNuvem(void *parameter)
 
         enviarTemperatura(estadoFornoTexto, temperaturaAtualQueue, temperaturaUltimaQueue);
 
-        while (xQueueReceive(eventosQueue, &evento, 0) == pdTRUE)
-        {
-            if (evento == NENHUM) continue;
+        if (veioEvento && evento != NENHUM) {
+            enviarEvento(obterEventoSistemaTexto(evento));
+        }
 
-            if (!enviarEvento(obterEventoSistemaTexto(evento)))
-            {
-                xQueueSendToFront(eventosQueue, &evento, 0); // devolve e tenta no próximo ciclo
-                break;                                       // não adianta insistir agora
-            }
+        while (xQueueReceive(eventosQueue, &evento, 0) == pdTRUE) {
+            if (evento != NENHUM) enviarEvento(obterEventoSistemaTexto(evento));
         }
 
         while (xQueueReceive(eventosFornoQueue, &eventoForno, 0) == pdTRUE)
@@ -128,8 +129,6 @@ void taskNuvem(void *parameter)
 
             estadoFornoAnterior = eventoForno;
         }
-
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
 }
 
@@ -248,7 +247,7 @@ static bool iniciarHttp(HTTPClient &http, WiFiClientSecure &client, const String
     client.setCACert(ROOT_CA);
 #endif
     http.setConnectTimeout(8000);
-    http.setTimeout(8000);
+    http.setTimeout(3000);
     http.setReuse(false);
     return http.begin(client, url);
 }
