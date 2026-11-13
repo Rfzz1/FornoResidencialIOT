@@ -9,7 +9,7 @@
 #include "utils.h"
 
 #define INTERVALO_TELEMETRIA_WS_MS 1000   // dashboard (tabela telemetrias)
-#define INTERVALO_TEMPERATURA_WS_MS 2000  // gráfico (tabela temperaturas)
+#define INTERVALO_TEMPERATURA_WS_MS 5000  // gráfico (tabela temperaturas). Máx. 720 linhas/hora; a API ainda descarta variação <= 1 °C
 #define INTERVALO_SESSAO_WS_MS 10000      // estado da sessão (antes era PUT HTTPS)
 
 // Websocket

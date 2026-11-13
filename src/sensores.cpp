@@ -71,31 +71,38 @@ float lerTemperatura()
   return temperaturaAtual;
 }
 
-bool temperaturaValida()
+// Valida a LEITURA NOVA antes de ela ser aceita.
+// (Antes validava condicoes.TEMP_ATUAL, ou seja, a leitura anterior: um NAN
+//  entrava, e a partir daí nenhuma leitura era aceita até reiniciar a placa.)
+//
+// compararComAnterior: só checa "variação abrupta" se a leitura anterior foi
+// válida. Se o sensor ficou fora um tempo, o forno pode ter esquentado muito
+// nesse intervalo; comparar com o valor velho rejeitaria tudo para sempre.
+bool temperaturaValida(double novaLeitura, bool compararComAnterior)
 {
 
-  if (isnan(condicoes.TEMP_ATUAL))
+  if (isnan(novaLeitura))
   {
 
     Serial.println("Erro: Falha ao ler sensor!");
     return false;
   }
 
-  if (condicoes.TEMP_ATUAL < 0)
+  if (novaLeitura < 0)
   {
 
     Serial.println("Erro: Temperatura negativa!");
     return false;
   }
 
-  if (condicoes.TEMP_ATUAL > TEMP_MAXIMA_VALIDA)
+  if (novaLeitura > TEMP_MAXIMA_VALIDA)
   {
 
     Serial.println("Erro: Temperatura muito alta!");
     return false;
   }
 
-  if (fabs(condicoes.TEMP_ATUAL - condicoes.ULTIMA_TEMP) > 100)
+  if (compararComAnterior && fabs(novaLeitura - condicoes.TEMP_ATUAL) > 100)
   {
 
     Serial.println("Erro: Variacao abrupta!");

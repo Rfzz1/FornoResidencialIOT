@@ -12,15 +12,21 @@ const unsigned long TEMPO_JANELA_TERMICA = 30000;
 
 estadoForno estadoFornoAnterior;
 
+// Só CALCULA para qual estado o sistema deve ir e devolve.
+// NÃO altera condicoes.estadoAtual: quem faz isso é a taskCerebro, DEPOIS de
+// comparar o estado novo com o atual e publicar os eventos de entrada/saída.
+// (Antes esta função já gravava o estado novo; a comparação na taskCerebro
+//  dava sempre "igual" e nenhum alerta/notificação era disparado.)
 estadoSistema definirEstadoSistema()
 {
+  estadoSistema novo = condicoes.estadoAtual;
 
   switch (condicoes.estadoAtual)
   {
 
   case INICIANDO:
 
-    condicoes.estadoAtual = SEGURO;
+    novo = SEGURO;
 
     break;
 
@@ -29,7 +35,7 @@ estadoSistema definirEstadoSistema()
     if (condicoes.TEMP_ATUAL >= TEMP_ALERTA_ENTRADA)
     {
 
-      condicoes.estadoAtual = ALERTA;
+      novo = ALERTA;
     }
 
     break;
@@ -39,11 +45,11 @@ estadoSistema definirEstadoSistema()
     if (condicoes.TEMP_ATUAL >= TEMP_CRITICA_ENTRADA)
     {
 
-      condicoes.estadoAtual = CRITICO;
+      novo = CRITICO;
     }
     else if (condicoes.TEMP_ATUAL < TEMP_ALERTA_SAIDA)
     {
-      condicoes.estadoAtual = SEGURO;
+      novo = SEGURO;
     }
 
     break;
@@ -53,23 +59,33 @@ estadoSistema definirEstadoSistema()
     if (condicoes.TEMP_ATUAL < TEMP_CRITICA_SAIDA)
     {
 
-      condicoes.estadoAtual = ALERTA;
+      novo = ALERTA;
     }
 
     break;
 
   case ERRO_SENSOR:
 
-    if (temperaturaValida())
+    // Só chega aqui com o sensor já lendo de novo (a taskCerebro mantém
+    // ERRO_SENSOR enquanto as leituras falham). Volta direto para o estado
+    // que a temperatura atual indica, em vez de passar sempre por SEGURO.
+    if (condicoes.TEMP_ATUAL >= TEMP_CRITICA_ENTRADA)
     {
-
-      condicoes.estadoAtual = SEGURO;
+      novo = CRITICO;
+    }
+    else if (condicoes.TEMP_ATUAL >= TEMP_ALERTA_ENTRADA)
+    {
+      novo = ALERTA;
+    }
+    else
+    {
+      novo = SEGURO;
     }
 
     break;
   }
 
-  return condicoes.estadoAtual;
+  return novo;
 }
 
 estadoForno definirEstadoForno()

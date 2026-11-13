@@ -26,6 +26,7 @@ void taskCerebro(void *parameter)
     double temperaturaAtual;
     
     static int tentativasLeitura = 0;
+    static bool temLeituraValida = false;
     const int MAX_TENTATIVAS_LEITURA = 3;
 
     vTaskDelay(2000 / portTICK_PERIOD_MS);
@@ -37,23 +38,35 @@ void taskCerebro(void *parameter)
 
         xQueueReceive(temperaturaQueue, &temperaturaAtual, portMAX_DELAY);
 
-        condicoes.ULTIMA_TEMP = condicoes.TEMP_ATUAL;
+        // Valida a leitura NOVA antes de aceitá-la. "Variação abrupta" só é
+        // checada se a leitura anterior foi válida (ver temperaturaValida).
+        bool compararComAnterior = temLeituraValida && tentativasLeitura == 0;
 
-        if (temperaturaValida())
+        if (temperaturaValida(temperaturaAtual, compararComAnterior))
         {
-            condicoes.TEMP_ATUAL = temperaturaAtual;
+            xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
+                condicoes.ULTIMA_TEMP = condicoes.TEMP_ATUAL;
+                condicoes.TEMP_ATUAL = temperaturaAtual;
+            xSemaphoreGive(mutexTelemetria);
+
             Serial.printf("Temperatura atual: %.2f °C\n", condicoes.TEMP_ATUAL);
             tentativasLeitura = 0;
+            temLeituraValida = true;
         }
         else
         {
+            // Leitura ruim é descartada: TEMP_ATUAL mantém o último valor bom
             tentativasLeitura++;
         }
 
         estadoSistema novoEstadoLido = definirEstadoSistema();  // Para onde o novo estado vai ir (futuro imediato)
         estadoForno novoEstadoFornoLido = definirEstadoForno(); // Para onde o novo estado do forno vai ir (futuro imediato)
 
-        if (tentativasLeitura >= MAX_TENTATIVAS_LEITURA || condicoes.estadoAtual == ERRO_SENSOR) {
+        // Erro de sensor enquanto as leituras falharem. Assim que voltar a ler
+        // (tentativasLeitura zera), definirEstadoSistema() tira do ERRO_SENSOR.
+        // (Antes havia "|| estadoAtual == ERRO_SENSOR", que prendia o sistema
+        //  no erro para sempre.)
+        if (tentativasLeitura >= MAX_TENTATIVAS_LEITURA) {
             novoEstadoLido = ERRO_SENSOR;
         }
 
