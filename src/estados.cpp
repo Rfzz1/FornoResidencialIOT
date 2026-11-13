@@ -4,13 +4,12 @@
 #include "estados.h"
 #include "telemetria.h"
 
-static unsigned long milisDuracaoEstado = 0;
-
-static unsigned long milisUltimaJanela = 0;
-static double tempReferenciaJanela = 0;
-const unsigned long TEMPO_JANELA_TERMICA = 30000;
-
-estadoForno estadoFornoAnterior;
+// Histórico das últimas leituras para a janela deslizante do estado do forno.
+// Uma posição a mais que a janela: assim a leitura mais antiga é de exatamente N segundos atrás.
+static const uint8_t TAM_HISTORICO = JANELA_TENDENCIA_SEG + 1;
+static float historicoTemperatura[TAM_HISTORICO];
+static uint8_t indiceHistorico = 0;
+static uint8_t quantidadeHistorico = 0;
 
 // Só CALCULA para qual estado o sistema deve ir e devolve.
 // NÃO altera condicoes.estadoAtual: quem faz isso é a taskCerebro, DEPOIS de
@@ -88,56 +87,49 @@ estadoSistema definirEstadoSistema()
   return novo;
 }
 
+// Calcula o estado do forno com uma JANELA DESLIZANTE e devolve.
+// Deve ser chamada UMA vez por leitura (1 s), e só pela taskCerebro.
+// Assim como definirEstadoSistema(), NÃO altera condicoes: quem grava é a taskCerebro.
+//
+// Antes: o estado só era recalculado a cada 30 s (comparando com 30 s antes),
+// então podia mostrar AQUECENDO por até 30 s com a temperatura já caindo.
+// Agora: a cada segundo compara "agora" com "N segundos atrás".
 estadoForno definirEstadoForno()
 {
-  estadoFornoAnterior = condicoes.estadoFornoAtual;
+  const float atual = condicoes.TEMP_ATUAL;
+  const estadoForno estadoAtual = condicoes.estadoFornoAtual;
 
-  // 1. Estado Desligado: avaliado de forma imediata
-  if (condicoes.TEMP_ATUAL < 60)
+  // 1. Desligado: avaliado na hora, e o histórico recomeça do zero
+  if (atual < TEMP_FORNO_LIGADO)
   {
-    condicoes.estadoFornoAtual = FORNO_DESLIGADO;
-    condicoes.sessaoIniciada = false;
-    // Reseta a referência para evitar saltos bruscos caso o forno volte a ligar
-    tempReferenciaJanela = condicoes.TEMP_ATUAL;
-
-    return condicoes.estadoFornoAtual;
+    indiceHistorico = 0;
+    quantidadeHistorico = 0;
+    return FORNO_DESLIGADO;
   }
 
-  // 2. Inicializa a janela de referência na primeira execução válida
-  if (tempReferenciaJanela == 0)
+  // 2. Guarda a leitura no histórico circular
+  historicoTemperatura[indiceHistorico] = atual;
+  indiceHistorico = (indiceHistorico + 1) % TAM_HISTORICO;
+  if (quantidadeHistorico < TAM_HISTORICO) quantidadeHistorico++;
+
+  // 3. Ainda não há N segundos de histórico (acabou de passar de 60 °C).
+  //    Se veio de desligado, está esquentando; senão, mantém o estado.
+  if (quantidadeHistorico < TAM_HISTORICO)
   {
-    tempReferenciaJanela = condicoes.TEMP_ATUAL;
-    milisUltimaJanela = millis();
-    condicoes.sessaoIniciada = true;
+    return (estadoAtual == FORNO_DESLIGADO) ? FORNO_AQUECENDO : estadoAtual;
   }
 
-  // 3. Avalia a tendência térmica apenas quando o tempo da janela expirar
-  if (millis() - milisUltimaJanela >= TEMPO_JANELA_TERMICA)
-  {
+  // 4. A posição que será sobrescrita a seguir guarda a leitura mais antiga (N s atrás)
+  const float diferenca = atual - historicoTemperatura[indiceHistorico];
 
-    // Compara a temperatura de agora com a de 30 segundos atrás
-    if (condicoes.TEMP_ATUAL > tempReferenciaJanela + MARGEM_ESTABILIDADE)
-    {
-      condicoes.estadoFornoAtual = FORNO_AQUECENDO;
-    }
-    else if (condicoes.TEMP_ATUAL < tempReferenciaJanela - MARGEM_ESTABILIDADE)
-    {
-      condicoes.estadoFornoAtual = FORNO_ESFRIANDO;
-    }
-    else
-    {
-      condicoes.estadoFornoAtual = FORNO_ATIVO;
-    }
+  // 5. Variação grande: entra (ou troca direto) para AQUECENDO / ESFRIANDO
+  if (diferenca >= MARGEM_ENTRAR_TENDENCIA)  return FORNO_AQUECENDO;
+  if (diferenca <= -MARGEM_ENTRAR_TENDENCIA) return FORNO_ESFRIANDO;
 
-    // 4. Salva a temperatura e o tempo atuais para a próxima janela
-    tempReferenciaJanela = condicoes.TEMP_ATUAL;
-    milisUltimaJanela = millis();
+  // 6. Zona intermediária (histerese): só sai de AQUECENDO/ESFRIANDO quando a
+  //    variação ficar abaixo da margem de saída. Evita o estado ficar piscando.
+  if (estadoAtual == FORNO_AQUECENDO && diferenca >= MARGEM_SAIR_TENDENCIA)  return FORNO_AQUECENDO;
+  if (estadoAtual == FORNO_ESFRIANDO && diferenca <= -MARGEM_SAIR_TENDENCIA) return FORNO_ESFRIANDO;
 
-    return condicoes.estadoFornoAtual;
-  }
-  else
-  {
-    // 5. Se a janela ainda não expirou, mantém o estado anterior
-    return estadoFornoAnterior;
-  }
+  return FORNO_ATIVO;
 }

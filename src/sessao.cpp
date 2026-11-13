@@ -10,21 +10,24 @@ static unsigned long tempoLigado = 0;
 static unsigned long milisUltimaAtualizacao = 0;
 static uint32_t ultimoSegundoExibido = 0;
 
+// Cuida só do cronômetro da sessão (tempo ligado).
+// Antes esta task TAMBÉM calculava o estado do forno (definirEstadoForno) e
+// gravava em condicoes, ao mesmo tempo que a taskCerebro, em outro núcleo.
+// Agora só a taskCerebro calcula o estado; aqui apenas lemos.
 void taskSessao(void *parameter)
 {
+  estadoForno estadoAnteriorLido = FORNO_DESLIGADO;
 
   for (;;)
   {
-
-    tratarInicioSessao(condicoes.estadoFornoAtual, condicoes.estadoFornoAnterior);
-    tratarFimSessao(condicoes.estadoFornoAtual, condicoes.estadoFornoAnterior);
-
     xSemaphoreTake(mutexEstadoForno, portMAX_DELAY);
-
-      condicoes.estadoFornoAnterior = condicoes.estadoFornoAtual;
-      condicoes.estadoFornoAtual = definirEstadoForno();
-
+      estadoForno estadoAtualLido = condicoes.estadoFornoAtual;
     xSemaphoreGive(mutexEstadoForno);
+
+    tratarInicioSessao(estadoAtualLido, estadoAnteriorLido);
+    tratarFimSessao(estadoAtualLido, estadoAnteriorLido);
+
+    estadoAnteriorLido = estadoAtualLido;
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }

@@ -94,9 +94,9 @@ void taskNuvem(void *parameter)
         bool veioEvento = (xQueueReceive(eventosQueue, &evento, PERIODO) == pdTRUE);
 
         // A sessão agora é controlada pelo ESTADO atual do forno (abaixo).
-        // Essa fila dependia de detectar a transição, o que não estava acontecendo
-        // (definirEstadoForno já atualiza condicoes.estadoFornoAtual sozinha),
-        // por isso a sessão nunca era encerrada no servidor. Só esvaziamos a fila.
+        // Controlar pelo estado é mais robusto que pela transição: se um
+        // iniciar/encerrar falhar, ele é tentado de novo no próximo ciclo.
+        // (A fila continua sendo alimentada pela taskCerebro; só esvaziamos.)
         while (xQueueReceive(eventosFornoQueue, &eventoForno, 0) == pdTRUE) {}
 
         tratarTempoSessao();

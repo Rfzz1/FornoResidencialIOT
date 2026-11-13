@@ -253,7 +253,19 @@ void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t *texto, size_t tamanh
     case WStype_DISCONNECTED:
         // NÃO reiniciar a conexão aqui: a biblioteca já tenta reconectar sozinha.
         // Reiniciar manualmente criava handshakes duplicados e esgotava o heap.
-        Serial.println("[WS] Desconectado do servidor WebSocket.");
+        // A biblioteca manda o motivo quando o servidor recusa o handshake
+        // (ex.: "HTTP 401", "WebSocket handshake failed - HTTP 500"). Sem texto
+        // costuma ser queda da conexão ou falta de resposta ao ping (heartbeat).
+        if (tamanho > 0)
+        {
+            Serial.printf("[WS] Desconectado. Motivo: %.*s | maiorBloco=%u\n",
+                          (int)tamanho, (char *)texto, ESP.getMaxAllocHeap());
+        }
+        else
+        {
+            Serial.printf("[WS] Desconectado (sem motivo informado: queda ou sem pong) | maiorBloco=%u\n",
+                          ESP.getMaxAllocHeap());
+        }
         condicoes.wsConectado = false;
         condicoes.iniciadoWebSocket = false;
         break;

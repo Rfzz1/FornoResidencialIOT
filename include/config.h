@@ -49,7 +49,12 @@ const float TEMP_ALERTA_SAIDA = 240;
 
 const float TEMP_MAXIMA_VALIDA = 400;
 
-const float MARGEM_ESTABILIDADE = 2.0;
+// ---- Estado do forno (ver definirEstadoForno em estados.cpp) ----
+// A cada leitura (1 s) compara a temperatura de agora com a de N segundos atrás.
+const float TEMP_FORNO_LIGADO = 60;          // abaixo disso: FORNO_DESLIGADO
+const uint8_t JANELA_TENDENCIA_SEG = 10;     // N: quantos segundos atrás comparar
+const float MARGEM_ENTRAR_TENDENCIA = 2.0;   // variação (°C) para ENTRAR em AQUECENDO/ESFRIANDO
+const float MARGEM_SAIR_TENDENCIA = 1.0;     // variação (°C) abaixo da qual VOLTA para ATIVO (evita oscilar)
 
 constexpr long gmtOffset_sec = -10800; // CARLOS BARBOSA - GMT-3
 constexpr int daylightOffset_sec = 0;
