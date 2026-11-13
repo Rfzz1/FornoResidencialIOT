@@ -55,51 +55,70 @@ void setTokenJWT(String TokenJWT)
 double temperaturaAtual = 0;
 double temperaturaUltima = 0;
 
-// Task para enviar telemetria periodicamente
+// Lê os valores MAIS RECENTES no momento do envio.
+// Antes a leitura era feita no início do ciclo e só enviada segundos depois
+// (no log: enviava 61 °C com o sensor já marcando 142 °C).
+static void lerTelemetriaAtual(double &atual, double &ultima, String &estadoSistemaTexto,
+                               String &estadoFornoTexto, uint32_t &tempoLigadoMin)
+{
+    xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
+        atual = condicoes.TEMP_ATUAL;
+        ultima = condicoes.ULTIMA_TEMP;
+        estadoSistemaTexto = obterEstadoSistemaTexto(condicoes.estadoAtual);
+        estadoFornoTexto = obterEstadoFornoTexto(condicoes.estadoFornoAtual);
+        tempoLigadoMin = condicoes.tempoLigadoMinutos;
+    xSemaphoreGive(mutexTelemetria);
+}
+
+// Task da nuvem via HTTPS.
+// - Com o WebSocket conectado: só cuida de iniciar/encerrar sessão (raro).
+//   Telemetria, temperatura, sessão e eventos vão pelo WebSocket (ws.cpp).
+// - Com o WebSocket fora: plano B, UMA requisição de dados por ciclo.
 void taskNuvem(void *parameter)
 {
-
     const TickType_t PERIODO = pdMS_TO_TICKS(2000);
 
-    double temperaturaAtualQueue;
+    // No plano B a temperatura (gráfico) vai a cada 3 ciclos; a telemetria (dashboard) vai em todos
+    const uint8_t CICLOS_POR_TEMPERATURA_HTTP = 3;
+    uint8_t cicloFallback = 0;
 
-    double temperaturaUltimaQueue;
-
-    String estadoSistemaTexto = "";
-
-    String estadoFornoTexto = "";
-
+    double atual = 0, ultima = 0;
+    String estadoSistemaTexto, estadoFornoTexto;
     uint32_t tempoLigadoMin = 0;
-    static estadoForno estadoFornoAnterior = condicoes.estadoFornoAnterior;
 
     eventoSistema evento;
-
     estadoForno eventoForno;
 
     for (;;)
     {
         bool veioEvento = (xQueueReceive(eventosQueue, &evento, PERIODO) == pdTRUE);
 
+        // A sessão agora é controlada pelo ESTADO atual do forno (abaixo).
+        // Essa fila dependia de detectar a transição, o que não estava acontecendo
+        // (definirEstadoForno já atualiza condicoes.estadoFornoAtual sozinha),
+        // por isso a sessão nunca era encerrada no servidor. Só esvaziamos a fila.
+        while (xQueueReceive(eventosFornoQueue, &eventoForno, 0) == pdTRUE) {}
+
         tratarTempoSessao();
 
-        xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
+        lerTelemetriaAtual(atual, ultima, estadoSistemaTexto, estadoFornoTexto, tempoLigadoMin);
+        bool fornoLigado = (estadoFornoTexto != "FORNO_DESLIGADO");
 
-            temperaturaAtualQueue = condicoes.TEMP_ATUAL;
+        // ---- 1) Ciclo de vida da sessão (HTTPS, acontece raramente) ----
+        if (fornoLigado && getSessaoId().isEmpty())
+        {
+            iniciarSessao();
+        }
+        else if (!fornoLigado && !getSessaoId().isEmpty())
+        {
+            Serial.println("Enviando telemetria final antes de encerrar...");
+            enviarTelemetria(atual, ultima, estadoSistemaTexto, "FORNO_DESLIGADO", tempoLigadoMin);
 
-            temperaturaUltimaQueue = condicoes.ULTIMA_TEMP;
+            Serial.println("Encerrar Sessão - HTTP");
+            encerrarSessao();
+        }
 
-            estadoSistemaTexto = obterEstadoSistemaTexto(condicoes.estadoAtual);
-
-            estadoFornoTexto = obterEstadoFornoTexto(condicoes.estadoFornoAtual);
-
-            tempoLigadoMin = condicoes.tempoLigadoMinutos;
-
-        xSemaphoreGive(mutexTelemetria);
-
-        enviarTelemetria(temperaturaAtualQueue, temperaturaUltimaQueue, estadoSistemaTexto, estadoFornoTexto, tempoLigadoMin);
-
-        enviarTemperatura(estadoFornoTexto, temperaturaAtualQueue, temperaturaUltimaQueue);
-
+        // ---- 2) Eventos que não puderam ir pelo WebSocket ----
         if (veioEvento && evento != NENHUM) {
             enviarEvento(obterEventoSistemaTexto(evento));
         }
@@ -108,26 +127,18 @@ void taskNuvem(void *parameter)
             if (evento != NENHUM) enviarEvento(obterEventoSistemaTexto(evento));
         }
 
-        while (xQueueReceive(eventosFornoQueue, &eventoForno, 0) == pdTRUE)
+        // ---- 3) Plano B: WebSocket fora do ar ----
+        if (!condicoes.wsConectado && fornoLigado)
         {
+            lerTelemetriaAtual(atual, ultima, estadoSistemaTexto, estadoFornoTexto, tempoLigadoMin);
+            enviarTelemetria(atual, ultima, estadoSistemaTexto, estadoFornoTexto, tempoLigadoMin);
 
-            if (estadoFornoAnterior == FORNO_DESLIGADO && eventoForno != FORNO_DESLIGADO)
+            if (++cicloFallback >= CICLOS_POR_TEMPERATURA_HTTP)
             {
-                iniciarSessao();
+                cicloFallback = 0;
+                lerTelemetriaAtual(atual, ultima, estadoSistemaTexto, estadoFornoTexto, tempoLigadoMin);
+                enviarTemperatura(estadoFornoTexto, atual, ultima);
             }
-
-            if (eventoForno == FORNO_DESLIGADO && estadoFornoAnterior != FORNO_DESLIGADO)
-            {
-
-                Serial.println("Enviando telemetria final antes de encerrar...");
-
-                enviarTelemetria(temperaturaAtualQueue, temperaturaUltimaQueue, estadoSistemaTexto, "FORNO_DESLIGADO", tempoLigadoMin);
-
-                Serial.println("Encerrar Sessão - HTTP");
-                encerrarSessao();
-            }
-
-            estadoFornoAnterior = eventoForno;
         }
     }
 }
@@ -534,6 +545,8 @@ void encerrarSessao()
 
 void atualizarSessao()
 {
+    // Com o WebSocket conectado, a atualização da sessão vai por ele (ws.cpp)
+    if (condicoes.wsConectado) return;
 
     String body;
     JsonDocument doc;
@@ -566,21 +579,14 @@ void atualizarSessao()
 void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const String &estadoSistema, const String &estadoForno, int tempoLigado)
 {
 
-    if (getSessaoId().isEmpty())
+    if (condicoes.wsConectado) return;
+
+    // Forno desligado e sem sessão: o servidor já sabe, não envia nada.
+    // A telemetria não depende de sessão; quem cria a sessão é a taskNuvem
+    // (antes isso disparava um HTTPS extra de iniciarSessao aqui dentro).
+    if (estadoForno == "FORNO_DESLIGADO" && getSessaoId().isEmpty())
     {
-        if (estadoForno == "FORNO_DESLIGADO")
-        {
-            
-            return;
-        }
-        
-        // Tenta iniciar apenas se necessário
-        Serial.println("[TELEM] sem sessao, tentando iniciar");
-        if (!iniciarSessao())
-        {
-            Serial.println("Nao foi possivel iniciar a sessao.");
-            return;
-        }
+        return;
     }
 
     JsonDocument doc;
@@ -619,33 +625,24 @@ void enviarTelemetria(double temperaturaAtual, double temperaturaUltima, const S
 
 void enviarTemperatura(const String &estadoFornoTexto, double temperaturaAtual, double temperaturaUltima)
 {
-    Serial.printf("[TEMP] chamada: forno=%s atual=%.2f sessao='%s'\n",
-                  estadoFornoTexto.c_str(), temperaturaAtual, getSessaoId().c_str());
+    // Com o WebSocket conectado, a temperatura vai por ele (ws.cpp)
+    if (condicoes.wsConectado) return;
 
-    if (estadoFornoTexto == "FORNO_DESLIGADO")
+    // OBS: antes, com o forno desligado, este trecho apagava o sessaoId local.
+    // Isso fazia o encerrarSessao() nunca rodar e a sessão ficava aberta no servidor.
+    if (estadoFornoTexto == "FORNO_DESLIGADO" || isnan(temperaturaAtual))
     {
-        Serial.println("[TEMP] saiu: forno desligado");
-        if (!getSessaoId().isEmpty())
-        {
-            setSessaoId("");
-        }
-        return;
-    }
-
-    if (isnan(temperaturaAtual))
-    {
-        Serial.println("[TEMP] saiu: temperatura invalida");
         return;
     }
 
     if (getSessaoId().isEmpty())
     {
-        if (!iniciarSessao())
-        {
-            Serial.println("[TEMP] saiu: nao foi possivel iniciar a sessao");
-            return;
-        }
+        Serial.println("[TEMP] sem sessao ainda, a taskNuvem vai criar.");
+        return;
     }
+
+    Serial.printf("[TEMP] HTTP: forno=%s atual=%.2f sessao='%s'\n",
+                  estadoFornoTexto.c_str(), temperaturaAtual, getSessaoId().c_str());
 
     JsonDocument doc;
     String body;

@@ -1,6 +1,7 @@
 #include "bluetooth.h"
 #include <Preferences.h>
 #include "BluetoothSerial.h"
+#include "esp_bt.h"
 #include "telemetria.h"
 #include "config.h"
 
@@ -9,6 +10,27 @@ static bool aguardandoReinicio = false;
 static unsigned long tempoInicioReinicio = 0;
 static bool bluetoothConectado = false;
 static bool deveDesligar = false;
+
+// Só por usar a BluetoothSerial, o ESP32 deixa a memória do controlador Bluetooth
+// reservada o tempo todo (dezenas de KB), mesmo com o Bluetooth desligado.
+// O TLS (HTTPS + WebSocket) precisa dessa memória. Como o Bluetooth só é usado
+// no provisionamento, devolvemos essa memória assim que ele não é mais necessário.
+// Depois disso o Bluetooth só volta a funcionar após reiniciar a placa.
+static void liberarMemoriaBluetooth()
+{
+    static bool liberada = false;
+    if (liberada) return;
+
+    if (esp_bt_controller_get_status() != ESP_BT_CONTROLLER_STATUS_IDLE)
+    {
+        Serial.println("[BT] Controlador ainda ativo, memoria nao liberada.");
+        return;
+    }
+
+    liberada = (esp_bt_controller_mem_release(ESP_BT_MODE_BTDM) == ESP_OK);
+    Serial.printf("[BT] Memoria do Bluetooth liberada: %s | heap livre=%u | maior bloco=%u\n",
+                  liberada ? "sim" : "nao", ESP.getFreeHeap(), ESP.getMaxAllocHeap());
+}
 
 void taskBluetooth(void *parameter)
 {
@@ -25,6 +47,7 @@ void taskBluetooth(void *parameter)
             Serial.println("Desligando Bluetooth para liberar memória.... ");
             SerialBT.end();
             bluetoothConectado = false;
+            liberarMemoriaBluetooth();
             vTaskDelete(NULL);
         }
 
@@ -41,6 +64,13 @@ void taskBluetooth(void *parameter)
 void solicitarDesligamentoBluetooth()
 {
     deveDesligar = true;
+
+    // Bluetooth nunca foi ligado (forno já provisionado): libera agora,
+    // antes do primeiro HTTPS, sem esperar a taskBluetooth.
+    if (!bluetoothConectado)
+    {
+        liberarMemoriaBluetooth();
+    }
 }
 
 void salvarSecretBluetooth(String recebidoDoTerminal)

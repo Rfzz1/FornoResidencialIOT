@@ -17,7 +17,8 @@
  
   QueueHandle_t temperaturaQueue;
   QueueHandle_t eventosQueue;
-  QueueHandle_t eventosFornoQueue;  
+  QueueHandle_t eventosFornoQueue;
+  QueueHandle_t wsEventosQueue;     // declarada no config.h, faltava a definição (erro de link)
   SemaphoreHandle_t mutexEstadoForno;
   SemaphoreHandle_t mutexEstadoSistema;
   SemaphoreHandle_t mutexTelemetria;
@@ -50,6 +51,7 @@
     temperaturaQueue = xQueueCreate(1, sizeof(double));
     eventosQueue = xQueueCreate(5, sizeof(eventoSistema));
     eventosFornoQueue = xQueueCreate(3, sizeof(estadoForno));
+    wsEventosQueue = xQueueCreate(8, sizeof(MensagemWS));
     mutexEstadoSistema = xSemaphoreCreateMutex();
     mutexEstadoForno = xSemaphoreCreateMutex();
     mutexTelemetria = xSemaphoreCreateMutex();

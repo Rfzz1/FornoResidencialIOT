@@ -4,6 +4,21 @@
 #include "telemetria.h"
 #include "utils.h"
 #include "sessao.h"
+#include "ws.h"
+#include "api.h"
+
+static void publicarEvento(eventoSistema evento)
+{
+    if (evento == NENHUM) return;
+
+    bool enviadoPeloWS = condicoes.wsConectado &&
+        enviarEventoPeloWebSocket(obterEventoSistemaTexto(evento).c_str(), getSessaoId());
+
+    if (!enviadoPeloWS) {
+        xQueueSend(eventosQueue, &evento, 100 / portTICK_PERIOD_MS);
+    }
+}
+
 
 void taskCerebro(void *parameter)
 {
@@ -12,7 +27,6 @@ void taskCerebro(void *parameter)
     
     static int tentativasLeitura = 0;
     const int MAX_TENTATIVAS_LEITURA = 3;
-    bool sucessoLeitura = false;
 
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
@@ -69,13 +83,8 @@ void taskCerebro(void *parameter)
                 eventoEntrada = ERRO_SENSOR_ENTRADA;
             } 
 
-            if (eventoSaida != NENHUM) {
-                xQueueSend(eventosQueue, &eventoSaida, 100/portTICK_PERIOD_MS);
-            }
-
-            if (eventoEntrada != NENHUM) {
-                xQueueSend(eventosQueue, &eventoEntrada, 100/portTICK_PERIOD_MS);
-            }
+            publicarEvento(eventoSaida);
+            publicarEvento(eventoEntrada);
 
             xSemaphoreTake(mutexEstadoSistema, portMAX_DELAY);
 

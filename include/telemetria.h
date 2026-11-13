@@ -18,7 +18,8 @@
         bool fezLogin = false;
         bool temporizadorLigado = false;
         bool iniciadoWebSocket = false;
-
+        volatile bool wsConectado = false;   // true só entre CONNECTED e DISCONNECTED
+                        
         float TEMP_ATUAL = 0;
         float ULTIMA_TEMP = 0;
 

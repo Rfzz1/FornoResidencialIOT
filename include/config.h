@@ -59,6 +59,7 @@ constexpr int daylightOffset_sec = 0;
 extern QueueHandle_t temperaturaQueue;
 extern QueueHandle_t eventosQueue;
 extern QueueHandle_t eventosFornoQueue;
+extern QueueHandle_t wsEventosQueue;
 
 extern SemaphoreHandle_t mutexEstadoForno;
 extern SemaphoreHandle_t mutexEstadoSistema;

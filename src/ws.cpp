@@ -6,7 +6,11 @@
 #include "config.h"
 #include "buzzer.h"
 #include "telemetria.h"
-#include "certs.h"
+#include "utils.h"
+
+#define INTERVALO_TELEMETRIA_WS_MS 1000   // dashboard (tabela telemetrias)
+#define INTERVALO_TEMPERATURA_WS_MS 2000  // gráfico (tabela temperaturas)
+#define INTERVALO_SESSAO_WS_MS 10000      // estado da sessão (antes era PUT HTTPS)
 
 // Websocket
 
@@ -18,9 +22,111 @@ static String wsHeaders;
 static String wsPath;
 static String wsTokenEmUso = "";
 static bool wsConfigurado = false;
+static String ultimoEstadoFornoEnviado = "";
 
 // Um handshake TLS precisa de um bloco contíguo grande de heap.
 static const uint32_t HEAP_MINIMO_HANDSHAKE = 32000;
+
+static void publicarTelemetriaWS() {
+
+    float atual, ultima;
+    String estadoSistemaTexto, estadoFornoTexto;
+    uint32_t tempoLigadoMin;
+
+    xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
+        atual = condicoes.TEMP_ATUAL;
+        ultima = condicoes.ULTIMA_TEMP;
+        estadoSistemaTexto = obterEstadoSistemaTexto(condicoes.estadoAtual);
+        estadoFornoTexto = obterEstadoFornoTexto(condicoes.estadoFornoAtual);
+        tempoLigadoMin = condicoes.tempoLigadoMinutos;
+    xSemaphoreGive(mutexTelemetria);
+
+    if (isnan(atual)) return;
+
+    // Desligado e o servidor já sabe: silêncio (mesmo comportamento da versão HTTP)
+    if (estadoFornoTexto == "FORNO_DESLIGADO" && estadoFornoTexto == ultimoEstadoFornoEnviado) return;
+
+    JsonDocument doc;
+    doc["msg"] = "TELEMETRIA";
+    doc["temperaturaAtual"] = atual;
+    doc["temperaturaUltima"] = isnan(ultima) ? 0.0 : ultima;
+    doc["estadoSistema"] = estadoSistemaTexto;
+    doc["estadoForno"] = estadoFornoTexto;
+    doc["tempoLigadoMinutos"] = tempoLigadoMin;
+
+    String json;
+    serializeJson(doc, json);
+
+    if (webSocket.sendTXT(json)) ultimoEstadoFornoEnviado = estadoFornoTexto;
+}
+
+// Mesmo conteúdo do POST /v1/temperaturas, mas pela conexão já aberta (sem novo handshake TLS)
+static void publicarTemperaturaWS() {
+
+    String sessao = getSessaoId();
+    if (sessao.isEmpty()) return;   // quem cria a sessão é a taskNuvem
+
+    float atual, ultima;
+    estadoForno estadoFornoAgora;
+
+    xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
+        atual = condicoes.TEMP_ATUAL;
+        ultima = condicoes.ULTIMA_TEMP;
+        estadoFornoAgora = condicoes.estadoFornoAtual;
+    xSemaphoreGive(mutexTelemetria);
+
+    if (isnan(atual) || estadoFornoAgora == FORNO_DESLIGADO) return;
+
+    JsonDocument doc;
+    doc["msg"] = "TEMPERATURA";
+    doc["sessaoId"] = sessao;
+    doc["temperaturaAtual"] = atual;
+    doc["temperaturaUltima"] = isnan(ultima) ? 0.0 : ultima;
+
+    String json;
+    serializeJson(doc, json);
+    webSocket.sendTXT(json);
+}
+
+// Mesmo conteúdo do PUT /v1/sessoes/{id}/atualizar
+static void publicarSessaoWS() {
+
+    String sessao = getSessaoId();
+    if (sessao.isEmpty()) return;
+
+    String estadoSistemaTexto, estadoFornoTexto;
+
+    xSemaphoreTake(mutexTelemetria, portMAX_DELAY);
+        estadoSistemaTexto = obterEstadoSistemaTexto(condicoes.estadoAtual);
+        estadoFornoTexto = obterEstadoFornoTexto(condicoes.estadoFornoAtual);
+    xSemaphoreGive(mutexTelemetria);
+
+    if (estadoFornoTexto == "FORNO_DESLIGADO") return;  // o encerramento é feito pela taskNuvem
+
+    JsonDocument doc;
+    doc["msg"] = "SESSAO";
+    doc["sessaoId"] = sessao;
+    doc["estadoSistemaAtual"] = estadoSistemaTexto;
+    doc["estadoFornoAtual"] = estadoFornoTexto;
+
+    String json;
+    serializeJson(doc, json);
+    webSocket.sendTXT(json);
+}
+
+// Chamada por QUALQUER task: só monta a mensagem e coloca na fila (não bloqueia, sem heap)
+bool enviarEventoPeloWebSocket(const char *tipoEvento, const String &sessaoId) {
+
+    if (!condicoes.wsConectado || sessaoId.isEmpty()) return false;
+
+    MensagemWS msg;
+    int n = snprintf(msg.payload, sizeof(msg.payload),
+                     "{\"msg\":\"EVENTO\",\"tipo\":\"%s\",\"sessaoId\":\"%s\"}",
+                     tipoEvento, sessaoId.c_str());
+
+    if (n <= 0 || n >= (int)sizeof(msg.payload)) return false;   // não coube: HTTP
+    return xQueueSend(wsEventosQueue, &msg, 0) == pdTRUE;        // fila cheia: HTTP
+}
 
 static void configurarWebSocket(const String &token)
 {
@@ -42,7 +148,9 @@ static void configurarWebSocket(const String &token)
 
     // ping a cada 15s, espera pong por 5s, desiste após 2 falhas seguidas
     webSocket.enableHeartbeat(15000, 5000, 2);
-    webSocket.setReconnectInterval(15000); // a PRÓPRIA biblioteca reconecta a cada 15s
+    // a PRÓPRIA biblioteca reconecta sozinha. Como o handshake agora não disputa
+    // memória com o HTTPS (ver taskWebSocket), dá para tentar com mais frequência.
+    webSocket.setReconnectInterval(5000);
 
     wsTokenEmUso = token;
     wsConfigurado = true;
@@ -61,7 +169,9 @@ void taskWebSocket(void *parameter)
     {
         if (!WiFi.isConnected())
         {
+            condicoes.wsConectado = false;
             vTaskDelay(1000 / portTICK_PERIOD_MS);
+            condicoes.iniciadoWebSocket = false;
             continue;
         }
 
@@ -85,16 +195,45 @@ void taskWebSocket(void *parameter)
             configurarWebSocket(token);
         }
 
-        // Sem lock: o WebSocket nunca bloqueia o envio HTTP.
-        // Só evita tentar o handshake TLS quando o heap está muito baixo.
-        if (webSocket.isConnected() || ESP.getMaxAllocHeap() >= HEAP_MINIMO_HANDSHAKE)
+        if (webSocket.isConnected())
         {
             webSocket.loop();
         }
-        else if (millis() - ultimoAvisoHeap > 10000)
+        else if (xSemaphoreTake(mutexHttps, 0) == pdTRUE)
         {
-            ultimoAvisoHeap = millis();
-            Serial.printf("[WS] Heap baixo para handshake (maior bloco=%u). Aguardando.\n", ESP.getMaxAllocHeap());
+            // Desconectado: este loop() pode iniciar um handshake TLS.
+            // Só deixamos isso acontecer quando NENHUM HTTPS está em andamento
+            // (mesmo lock usado pelo HTTPS). Antes os dois handshakes rodavam ao
+            // mesmo tempo, faltava memória ("BIGNUM - Memory allocation failed")
+            // e o WebSocket nunca conectava com o forno ligado.
+            webSocket.loop();
+            xSemaphoreGive(mutexHttps);
+        }
+
+        if (webSocket.isConnected())
+        {
+            MensagemWS msg;
+            while (xQueueReceive(wsEventosQueue, &msg, 0) == pdTRUE) {
+                webSocket.sendTXT(msg.payload);
+            }
+
+            static unsigned long ultimoEnvio = 0;
+            if (millis() - ultimoEnvio >= INTERVALO_TELEMETRIA_WS_MS) {
+                ultimoEnvio = millis();
+                publicarTelemetriaWS();
+            }
+
+            static unsigned long ultimoEnvioTemperatura = 0;
+            if (millis() - ultimoEnvioTemperatura >= INTERVALO_TEMPERATURA_WS_MS) {
+                ultimoEnvioTemperatura = millis();
+                publicarTemperaturaWS();
+            }
+
+            static unsigned long ultimoEnvioSessao = 0;
+            if (millis() - ultimoEnvioSessao >= INTERVALO_SESSAO_WS_MS) {
+                ultimoEnvioSessao = millis();
+                publicarSessaoWS();
+            }
         }
 
         vTaskDelay(10 / portTICK_PERIOD_MS); // Pequena pausa para evitar sobrecarga da CPU
@@ -107,12 +246,16 @@ void aoReceberEventoWebSocket(WStype_t tipoEvento, uint8_t *texto, size_t tamanh
     {
     case WStype_CONNECTED:
         Serial.println("[WS] Conectado ao servidor WebSocket.");
+        condicoes.wsConectado = true;
+        ultimoEstadoFornoEnviado = "";
         break;
 
     case WStype_DISCONNECTED:
         // NÃO reiniciar a conexão aqui: a biblioteca já tenta reconectar sozinha.
         // Reiniciar manualmente criava handshakes duplicados e esgotava o heap.
         Serial.println("[WS] Desconectado do servidor WebSocket.");
+        condicoes.wsConectado = false;
+        condicoes.iniciadoWebSocket = false;
         break;
 
     case WStype_TEXT:
